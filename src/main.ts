@@ -1,22 +1,32 @@
 import { App, Plugin, PluginSettingTab, Setting } from "obsidian";
+import { createSuppressAliasExtension } from "./suppressAliasExtension";
+import { CompactLinksWithAliasSettings } from "./types";
 
-// Remember to rename these classes and interfaces!
-
-interface AliasLinkShortenerSettings {
-	mySetting: string;
-}
-
-const DEFAULT_SETTINGS: AliasLinkShortenerSettings = {
-	mySetting: "default",
+const DEFAULT_SETTINGS: CompactLinksWithAliasSettings = {
+	diablePluginWhenSelected: true,
+	enablePlugin: true,
 };
 
-export default class AliasLinkShortenerPlugin extends Plugin {
-	settings!: AliasLinkShortenerSettings;
+export default class CompactLinksWithAliasPlugin extends Plugin {
+	settings: CompactLinksWithAliasSettings = DEFAULT_SETTINGS;
 
 	async onload() {
 		await this.loadSettings();
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new AliasLinkShortenerSettingTab(this.app, this));
+
+		this.registerEditorExtension(
+			createSuppressAliasExtension(this.settings)
+		);
+		this.addSettingTab(new CompactLinksWithAliasSettingTab(this.app, this));
+		this.addCommand({
+			id: "toggle-compact-links-with-alias",
+			name: "Toggle Compact Links with Alias",
+			callback: () => {
+				this.settings.enablePlugin = !this.settings.enablePlugin;
+				this.saveSettings();
+				// プラグインの状態が変更されたら、エディタのオプションを更新する
+				this.app.workspace.updateOptions();
+			},
+		});
 	}
 
 	onunload() {}
@@ -31,12 +41,17 @@ export default class AliasLinkShortenerPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+		this.app.workspace.updateOptions();
+		this.registerEditorExtension(
+			createSuppressAliasExtension(this.settings)
+		);
 	}
 }
-class AliasLinkShortenerSettingTab extends PluginSettingTab {
-	plugin: AliasLinkShortenerPlugin;
 
-	constructor(app: App, plugin: AliasLinkShortenerPlugin) {
+class CompactLinksWithAliasSettingTab extends PluginSettingTab {
+	plugin: CompactLinksWithAliasPlugin;
+
+	constructor(app: App, plugin: CompactLinksWithAliasPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
@@ -46,15 +61,22 @@ class AliasLinkShortenerSettingTab extends PluginSettingTab {
 
 		containerEl.empty();
 
+		new Setting(containerEl).setName("Enable plugin").addToggle((toggle) =>
+			toggle
+				.setValue(this.plugin.settings.enablePlugin)
+				.onChange(async (value) => {
+					this.plugin.settings.enablePlugin = value;
+					await this.plugin.saveSettings();
+				})
+		);
+
 		new Setting(containerEl)
-			.setName("Setting #1")
-			.setDesc("It's a secret")
-			.addText((text) =>
-				text
-					.setPlaceholder("Enter your secret")
-					.setValue(this.plugin.settings.mySetting)
+			.setName("Unhide link names when text selection begins")
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.diablePluginWhenSelected)
 					.onChange(async (value) => {
-						this.plugin.settings.mySetting = value;
+						this.plugin.settings.diablePluginWhenSelected = value;
 						await this.plugin.saveSettings();
 					})
 			);
