@@ -23,7 +23,6 @@ export default class CompactLinksWithAliasPlugin extends Plugin {
 			callback: () => {
 				this.settings.enablePlugin = !this.settings.enablePlugin;
 				this.saveSettings();
-				// プラグインの状態が変更されたら、エディタのオプションを更新する
 				this.app.workspace.updateOptions();
 			},
 		});
