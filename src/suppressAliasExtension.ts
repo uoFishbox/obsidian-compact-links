@@ -56,40 +56,54 @@ export function createSuppressAliasExtension(
 				node: {
 					type: { name: string };
 					from: number;
-					node: { nextSibling: any };
+					to: number;
+					node: { nextSibling: any; parent: any };
 				},
 				cursor: number,
 				ranges: Range<Decoration>[]
 			) {
+				// return if the node is not a link start
 				if (!node.type.name.includes("formatting-link-start")) return;
 
-				const linkTextNode = node.node.nextSibling;
-				const pipeNode = linkTextNode?.nextSibling;
+				let currentNode = node.node.nextSibling;
+				if (!currentNode) return;
 
-				if (
-					linkTextNode?.type.name.includes("hmd-internal-link") &&
-					pipeNode?.type.name.includes("link-alias-pipe")
+				const startPos = currentNode.from;
+				let pipeNode = null;
+
+				// find the pipe node
+				while (
+					currentNode &&
+					!currentNode.type.name.includes("formatting-link-end")
 				) {
-					const isCursorInDisplayArea =
-						cursor >= node.from && cursor <= pipeNode.from;
+					if (currentNode.type.name.includes("link-alias-pipe")) {
+						pipeNode = currentNode;
+						break;
+					}
+					currentNode = currentNode.nextSibling;
+				}
 
-					if (!isCursorInDisplayArea) {
+				// if the pipe node is found, check if the cursor is in the range
+				if (pipeNode) {
+					const isCursorInRange =
+						cursor >= startPos && cursor <= pipeNode.from;
+
+					if (!isCursorInRange) {
 						ranges.push(
 							Decoration.mark({
 								class: "suppress-alias",
 								attributes: { style: "display: none" },
-							}).range(linkTextNode.from, linkTextNode.to)
+							}).range(startPos, pipeNode.from)
 						);
 					}
 				}
 			}
 		},
-
 		{ decorations: (v) => v.decorations }
 	);
 
 	const suppressAliasStyle = EditorView.baseTheme({
-		".suppress-alias.cm-link-has-alias": { display: "none !important" },
+		".suppress-alias": { display: "none !important" },
 	});
 
 	return [suppressAliasPlugin, suppressAliasStyle];
