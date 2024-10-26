@@ -88,7 +88,8 @@ export function createSuppressAliasExtension(
 					const isCursorInRange =
 						cursor >= startPos && cursor <= pipeNode.from;
 
-					if (!isCursorInRange) {
+					// Ensure that the decoration range is not empty
+					if (!isCursorInRange && startPos < pipeNode.from) {
 						ranges.push(
 							Decoration.mark({
 								class: "suppress-alias",
