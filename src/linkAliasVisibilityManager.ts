@@ -57,6 +57,7 @@ export function createAliasVisibilityPlugin(
 					type: { name: string };
 					from: number;
 					to: number;
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					node: { nextSibling: any; parent: any };
 				},
 				cursor: number,
