@@ -1,5 +1,6 @@
 import { App, Plugin, PluginSettingTab, Setting } from "obsidian";
 import { createAliasLinkPlugin } from "./createCompactAliasLinkPlugin";
+import { createCompactUrlPlugin } from "./createCompactUrlPlugin";
 import { CompactLinksSettings } from "./types";
 
 const DEFAULT_SETTINGS: CompactLinksSettings = {
@@ -14,6 +15,7 @@ export default class CompactLinksPlugin extends Plugin {
 		await this.loadSettings();
 
 		this.registerEditorExtension(createAliasLinkPlugin(this.settings));
+		this.registerEditorExtension(createCompactUrlPlugin(this.settings));
 		this.addSettingTab(new CompactLinksSettingTab(this.app, this));
 		this.addCommand({
 			id: "toggle-compact-links-with-alias",
@@ -41,6 +43,7 @@ export default class CompactLinksPlugin extends Plugin {
 		await this.saveData(this.settings);
 		this.app.workspace.updateOptions();
 		this.registerEditorExtension(createAliasLinkPlugin(this.settings));
+		this.registerEditorExtension(createCompactUrlPlugin(this.settings));
 	}
 }
 
@@ -85,9 +88,44 @@ class CompactLinksSettingTab extends PluginSettingTab {
 				);
 		}
 
-						this.plugin.settings.diablePluginWhenSelected = value;
+		new Setting(containerEl)
+			.setName("Compact external links")
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.urls.enable)
+					.onChange(async (value) => {
+						this.plugin.settings.urls.enable = value;
 						await this.plugin.saveSettings();
+						this.display();
 					})
 			);
+
+		if (this.plugin.settings.urls.enable) {
+			// if displaymode is set to domain, show the description of the display mode.
+			let description = "";
+			if (this.plugin.settings.urls.displayMode === "domain") {
+				description = "Display format: [Title](domain)";
+			} else {
+				description = "Display format: [Title](...)";
+			}
+
+			new Setting(containerEl)
+				.setName("Display mode")
+				.setDesc(description)
+				.addDropdown((dropdown) =>
+					dropdown
+						.addOptions({
+							hide: "Hide",
+							domain: "Domain",
+						})
+						.setValue(this.plugin.settings.urls.displayMode)
+						.onChange(async (value) => {
+							this.plugin.settings.urls.displayMode =
+								value as any;
+							await this.plugin.saveSettings();
+							this.display();
+						})
+				);
+		}
 	}
 }

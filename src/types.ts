@@ -14,6 +14,12 @@ export interface CompactLinksSettings {
 	urls: CompactUrlSettings;
 }
 
+export interface ParsedUrl {
+	isUrl: boolean;
+	scheme: string;
+	domain: string;
+}
+
 export interface AliasDecorationRange {
 	startPos: number;
 	pipePos: number;
