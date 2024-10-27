@@ -21,7 +21,6 @@ export class CompactUrlPlugin {
 		this._decorations = this.buildDecorations(view);
 	}
 
-	// publicなgetterを追加
 	get decorations(): DecorationSet {
 		return this._decorations;
 	}

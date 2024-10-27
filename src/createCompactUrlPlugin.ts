@@ -17,7 +17,7 @@ export function createCompactUrlPlugin(settings: CompactLinksSettings) {
 			}
 
 			get decorations() {
-				return this.plugin.decorations; // これでアクセス可能になります
+				return this.plugin.decorations;
 			}
 		},
 		{
