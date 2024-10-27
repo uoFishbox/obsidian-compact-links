@@ -1,4 +1,4 @@
-export interface CompactLinksWithAliasSettings {
+export interface CompactLinksSettings {
 	diablePluginWhenSelected: boolean;
 	enablePlugin: boolean;
 }

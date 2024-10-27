@@ -1,14 +1,14 @@
 import { App, Plugin, PluginSettingTab, Setting } from "obsidian";
 import { createAliasVisibilityPlugin } from "./linkAliasVisibilityManager";
-import { CompactLinksWithAliasSettings } from "./types";
+import { CompactLinksSettings } from "./types";
 
-const DEFAULT_SETTINGS: CompactLinksWithAliasSettings = {
+const DEFAULT_SETTINGS: CompactLinksSettings = {
 	diablePluginWhenSelected: true,
 	enablePlugin: true,
 };
 
 export default class CompactLinksWithAliasPlugin extends Plugin {
-	settings: CompactLinksWithAliasSettings = DEFAULT_SETTINGS;
+	settings: CompactLinksSettings = DEFAULT_SETTINGS;
 
 	async onload() {
 		await this.loadSettings();
@@ -16,7 +16,7 @@ export default class CompactLinksWithAliasPlugin extends Plugin {
 		this.registerEditorExtension(
 			createAliasVisibilityPlugin(this.settings)
 		);
-		this.addSettingTab(new CompactLinksWithAliasSettingTab(this.app, this));
+		this.addSettingTab(new CompactLinksSettingTab(this.app, this));
 		this.addCommand({
 			id: "toggle-compact-links-with-alias",
 			name: "Toggle Compact Links with Alias",
@@ -47,7 +47,7 @@ export default class CompactLinksWithAliasPlugin extends Plugin {
 	}
 }
 
-class CompactLinksWithAliasSettingTab extends PluginSettingTab {
+class CompactLinksSettingTab extends PluginSettingTab {
 	plugin: CompactLinksWithAliasPlugin;
 
 	constructor(app: App, plugin: CompactLinksWithAliasPlugin) {

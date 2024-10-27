@@ -2,8 +2,8 @@
     "author": "uoFishbox",
     "authorUrl": "https://obsidian.md",
     "description": "Reduces visual clutter while typing by providing compact display of wiki-links with alias.",
-    "id": "compact-links-with-alias",
+    "id": "compact-links",
     "isDesktopOnly": false,
-    "name": "Compact links with alias",
+    "name": "Compact Links",
     "version": "1.0.2"
 }
