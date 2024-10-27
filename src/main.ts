@@ -1,5 +1,5 @@
 import { App, Plugin, PluginSettingTab, Setting } from "obsidian";
-import { createSuppressAliasExtension } from "./linkAliasVisibilityManager";
+import { createAliasVisibilityPlugin } from "./linkAliasVisibilityManager";
 import { CompactLinksWithAliasSettings } from "./types";
 
 const DEFAULT_SETTINGS: CompactLinksWithAliasSettings = {
@@ -14,7 +14,7 @@ export default class CompactLinksWithAliasPlugin extends Plugin {
 		await this.loadSettings();
 
 		this.registerEditorExtension(
-			createSuppressAliasExtension(this.settings)
+			createAliasVisibilityPlugin(this.settings)
 		);
 		this.addSettingTab(new CompactLinksWithAliasSettingTab(this.app, this));
 		this.addCommand({
@@ -42,7 +42,7 @@ export default class CompactLinksWithAliasPlugin extends Plugin {
 		await this.saveData(this.settings);
 		this.app.workspace.updateOptions();
 		this.registerEditorExtension(
-			createSuppressAliasExtension(this.settings)
+			createAliasVisibilityPlugin(this.settings)
 		);
 	}
 }

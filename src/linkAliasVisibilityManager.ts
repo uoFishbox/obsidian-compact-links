@@ -9,7 +9,7 @@ import {
 } from "@codemirror/view";
 import { CompactLinksWithAliasSettings } from "./types";
 
-export function createSuppressAliasExtension(
+export function createAliasVisibilityPlugin(
 	settings: CompactLinksWithAliasSettings
 ) {
 	const suppressAliasPlugin = ViewPlugin.fromClass(
