@@ -1,5 +1,5 @@
 import { App, Plugin, PluginSettingTab, Setting } from "obsidian";
-import { createSuppressAliasExtension } from "./suppressAliasExtension";
+import { createSuppressAliasExtension } from "./linkAliasVisibilityManager";
 import { CompactLinksWithAliasSettings } from "./types";
 
 const DEFAULT_SETTINGS: CompactLinksWithAliasSettings = {
