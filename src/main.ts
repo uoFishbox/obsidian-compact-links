@@ -1,7 +1,7 @@
 import { App, Plugin, PluginSettingTab, Setting } from "obsidian";
 import { createAliasLinkPlugin } from "./createCompactAliasLinkPlugin";
 import { createCompactUrlPlugin } from "./createCompactUrlPlugin";
-import { CompactLinksSettings } from "./types";
+import { CompactLinksSettings, DisplayMode } from "./types";
 
 const DEFAULT_SETTINGS: CompactLinksSettings = {
 	aliasLinks: { disableWhenSelected: true, enable: true },
@@ -121,7 +121,7 @@ class CompactLinksSettingTab extends PluginSettingTab {
 						.setValue(this.plugin.settings.urls.displayMode)
 						.onChange(async (value) => {
 							this.plugin.settings.urls.displayMode =
-								value as any;
+								value as DisplayMode;
 							await this.plugin.saveSettings();
 							this.display();
 						})
