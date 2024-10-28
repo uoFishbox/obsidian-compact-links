@@ -50,7 +50,7 @@ export default class CompactLinksPlugin extends Plugin {
 						if (isSourceMode) {
 							this.turnOffPluginsTemporarily();
 						} else {
-							await this.turnOnPluginsFromSettings();
+							await this.turnOnPluginsFromLocalSettings();
 						}
 					}
 				}
@@ -76,7 +76,7 @@ export default class CompactLinksPlugin extends Plugin {
 		}
 	}
 
-	async turnOnPluginsFromSettings() {
+	async turnOnPluginsFromLocalSettings() {
 		const localSettings = Object.assign(
 			{},
 			DEFAULT_SETTINGS,
