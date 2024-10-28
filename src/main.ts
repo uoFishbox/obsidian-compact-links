@@ -27,6 +27,15 @@ export default class CompactLinksPlugin extends Plugin {
 				this.app.workspace.updateOptions();
 			},
 		});
+		this.addCommand({
+			id: "toggle-compact-external-links",
+			name: "Toggle compact external links",
+			callback: () => {
+				this.settings.urls.enable = !this.settings.urls.enable;
+				this.saveSettings();
+				this.app.workspace.updateOptions();
+			},
+		});
 	}
 
 	onunload() {}
