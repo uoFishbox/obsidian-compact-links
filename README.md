@@ -22,8 +22,11 @@ When you have a wikilink with an alias in the format `[[NoteTitle|Alias]]`, the 
 For markdown-style external links in the format `[Title](url)`, the plugin automatically shortens the URL display. The full URL is displayed when the cursor is at the URL portion or by clicking on the shortened portion.
 
 Domain mode:
+
 ![Title - debug - Obsidian v1.7.4](https://i.gyazo.com/a46a9d77f273ae9e0021080c5c359e64.gif)
+
 Hidden mode:
+
 ![Title - debug - Obsidian v1.7.4](https://i.gyazo.com/a76ee2401bd5c54205c9565da64ca861.gif)
 
 **Example:**
