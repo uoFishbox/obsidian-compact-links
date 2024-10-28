@@ -2,6 +2,8 @@
 
 Displays links in a compact format to reduce visual clutter during typing.
 
+![Title - debug - Obsidian v1.7.4](https://i.gyazo.com/3d1edaabdd6f2f08d72b3df82c1f6bcb.gif)
+
 ## Features
 
 ### 1. Internal Link Alias Display
