@@ -1,7 +1,7 @@
 {
     "author": "uoFishbox",
     "authorUrl": "https://github.com/uoFishbox/obsidian-compact-links",
-    "description": "Reduces visual clutter while typing by providing compact display of wiki-links with alias.",
+    "description": "More compact display of links reduces visual clutter while typing.",
     "id": "compact-links",
     "isDesktopOnly": false,
     "name": "Compact Links",
