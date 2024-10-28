@@ -118,10 +118,10 @@ class CompactLinksSettingTab extends PluginSettingTab {
 
 		containerEl.empty();
 
-		containerEl.createEl("h2", { text: "General" });
+		containerEl.createEl("h2", { text: "General Settings" });
 
 		new Setting(containerEl)
-			.setName("Disable plugin in Source mode")
+			.setName("Disable plugin in source mode")
 			.addToggle((toggle) =>
 				toggle
 					.setValue(this.plugin.settings.disableInSourceMode)
@@ -145,7 +145,7 @@ class CompactLinksSettingTab extends PluginSettingTab {
 
 		if (this.plugin.settings.aliasLinks.enable) {
 			new Setting(containerEl)
-				.setName("Disable during text selection")
+				.setName("Disable while text is selected")
 				.addToggle((toggle) =>
 					toggle
 						.setValue(
@@ -181,13 +181,13 @@ class CompactLinksSettingTab extends PluginSettingTab {
 			}
 
 			new Setting(containerEl)
-				.setName("Display mode")
+				.setName("URL display format")
 				.setDesc(description)
 				.addDropdown((dropdown) =>
 					dropdown
 						.addOptions({
-							hide: "Hide",
-							domain: "Domain",
+							hidden: "Hidden",
+							domain: "Show domain",
 						})
 						.setValue(this.plugin.settings.urls.displayMode)
 						.onChange(async (value) => {

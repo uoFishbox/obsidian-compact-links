@@ -16,7 +16,7 @@ export class CompactUrlPlugin {
 
 	constructor(
 		private readonly settings: CompactLinksSettings,
-		view: EditorView
+		private readonly view: EditorView
 	) {
 		this._decorations = this.buildDecorations(view);
 	}
@@ -83,6 +83,11 @@ export class CompactUrlPlugin {
 		if (parsedUrl.isUrl) {
 			this.addUrlDecoration(ranges, url, parsedUrl, view, urlRange);
 		}
+	}
+
+	private hasSelection(view: EditorView): boolean {
+		const { from, to } = view.state.selection.main;
+		return from !== to;
 	}
 
 	private isUrlNode(node: NodeInfo): boolean {
