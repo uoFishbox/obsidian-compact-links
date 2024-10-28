@@ -1,16 +1,17 @@
-import { App, Plugin, PluginSettingTab, Setting } from "obsidian";
+import { App, MarkdownView, Plugin, PluginSettingTab, Setting } from "obsidian";
+
 import { createAliasLinkPlugin } from "./createCompactAliasLinkPlugin";
 import { createCompactUrlPlugin } from "./createCompactUrlPlugin";
 import { CompactLinksSettings, DisplayMode } from "./types";
 
 const DEFAULT_SETTINGS: CompactLinksSettings = {
+	disableInSourceMode: false,
 	aliasLinks: { disableWhenSelected: true, enable: true },
 	urls: { displayMode: "domain", enable: true },
 };
 
 export default class CompactLinksPlugin extends Plugin {
 	settings: CompactLinksSettings = DEFAULT_SETTINGS;
-
 	async onload() {
 		await this.loadSettings();
 
@@ -36,10 +37,59 @@ export default class CompactLinksPlugin extends Plugin {
 				this.app.workspace.updateOptions();
 			},
 		});
+
+		this.registerEvent(
+			this.app.workspace.on("layout-change", async () => {
+				const activeView =
+					this.app.workspace.getActiveViewOfType(MarkdownView);
+				if (activeView) {
+					const isSourceMode = activeView.getState()
+						.source as boolean;
+
+					if (this.settings.disableInSourceMode) {
+						if (isSourceMode) {
+							this.turnOffPluginsTemporarily();
+						} else {
+							await this.turnOnPluginsFromSettings();
+						}
+					}
+				}
+			})
+		);
 	}
 
 	onunload() {}
 
+	updateDecorations(activeView: MarkdownView) {
+		const editorview = activeView.editor.cm;
+		editorview.setState(editorview.state);
+	}
+
+	turnOffPluginsTemporarily() {
+		this.settings.aliasLinks.enable = false;
+		this.settings.urls.enable = false;
+		// this.saveSettings();
+		this.app.workspace.updateOptions();
+		const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+		if (activeView) {
+			this.updateDecorations(activeView);
+		}
+	}
+
+	async turnOnPluginsFromSettings() {
+		const localSettings = Object.assign(
+			{},
+			DEFAULT_SETTINGS,
+			await this.loadData()
+		);
+		this.settings.aliasLinks.enable = localSettings.aliasLinks.enable;
+		this.settings.urls.enable = localSettings.urls.enable;
+		this.app.workspace.updateOptions();
+		const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+		if (activeView) {
+			this.updateDecorations(activeView);
+		}
+	}
 	async loadSettings() {
 		this.settings = Object.assign(
 			{},
@@ -68,6 +118,19 @@ class CompactLinksSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 
 		containerEl.empty();
+
+		containerEl.createEl("h2", { text: "General" });
+
+		new Setting(containerEl)
+			.setName("Disable plugin in Source mode")
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.disableInSourceMode)
+					.onChange(async (value) => {
+						this.plugin.settings.disableInSourceMode = value;
+						await this.plugin.saveSettings();
+					})
+			);
 
 		containerEl.createEl("h2", { text: "Alias Only View" });
 

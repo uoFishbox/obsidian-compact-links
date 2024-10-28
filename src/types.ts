@@ -10,6 +10,7 @@ export interface CompactUrlSettings {
 export type DisplayMode = "hide" | "domain";
 
 export interface CompactLinksSettings {
+	disableInSourceMode: boolean;
 	aliasLinks: CompactAliasLinksSettings;
 	urls: CompactUrlSettings;
 }
