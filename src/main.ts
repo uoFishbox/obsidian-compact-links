@@ -1,4 +1,4 @@
-import { App, MarkdownView, Plugin, PluginSettingTab, Setting } from "obsidian";
+import { App, Plugin, PluginSettingTab, Setting } from "obsidian";
 
 import { createAliasLinkPlugin } from "./createCompactAliasLinkPlugin";
 import { createCompactUrlPlugin } from "./createCompactUrlPlugin";
@@ -39,57 +39,57 @@ export default class CompactLinksPlugin extends Plugin {
 			},
 		});
 
-		this.registerEvent(
-			this.app.workspace.on("layout-change", async () => {
-				const activeView =
-					this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (activeView) {
-					const isSourceMode = activeView.getState()
-						.source as boolean;
+		// this.registerEvent(
+		// 	this.app.workspace.on("layout-change", async () => {
+		// 		const activeView =
+		// 			this.app.workspace.getActiveViewOfType(MarkdownView);
+		// 		if (activeView) {
+		// 			const isSourceMode = activeView.getState()
+		// 				.source as boolean;
 
-					if (this.settings.disableInSourceMode) {
-						if (isSourceMode) {
-							this.turnOffPluginsTemporarily();
-						} else {
-							await this.turnOnPluginsFromLocalSettings();
-						}
-					}
-				}
-			})
-		);
+		// 			if (this.settings.disableInSourceMode) {
+		// 				if (isSourceMode) {
+		// 					this.turnOffPluginsTemporarily();
+		// 				} else {
+		// 					await this.turnOnPluginsFromLocalSettings();
+		// 				}
+		// 			}
+		// 		}
+		// 	})
+		// );
 	}
 
 	onunload() {}
 
-	updateDecorations(activeView: MarkdownView) {
-		const editorview = activeView.editor.cm;
-		editorview.setState(editorview.state);
-	}
+	// updateDecorations(activeView: MarkdownView) {
+	// 	const editorview = activeView.editor.cm;
+	// 	editorview.setState(editorview.state);
+	// }
 
-	turnOffPluginsTemporarily() {
-		this.settings.aliasLinks.enable = false;
-		this.settings.urls.enable = false;
-		this.app.workspace.updateOptions();
-		const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
-		if (activeView) {
-			this.updateDecorations(activeView);
-		}
-	}
+	// turnOffPluginsTemporarily() {
+	// 	this.settings.aliasLinks.enable = false;
+	// 	this.settings.urls.enable = false;
+	// 	this.app.workspace.updateOptions();
+	// 	const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+	// 	if (activeView) {
+	// 		this.updateDecorations(activeView);
+	// 	}
+	// }
 
-	async turnOnPluginsFromLocalSettings() {
-		const localSettings = Object.assign(
-			{},
-			DEFAULT_SETTINGS,
-			await this.loadData()
-		);
-		this.settings.aliasLinks.enable = localSettings.aliasLinks.enable;
-		this.settings.urls.enable = localSettings.urls.enable;
-		this.app.workspace.updateOptions();
-		const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
-		if (activeView) {
-			this.updateDecorations(activeView);
-		}
-	}
+	// async turnOnPluginsFromLocalSettings() {
+	// 	const localSettings = Object.assign(
+	// 		{},
+	// 		DEFAULT_SETTINGS,
+	// 		await this.loadData()
+	// 	);
+	// 	this.settings.aliasLinks.enable = localSettings.aliasLinks.enable;
+	// 	this.settings.urls.enable = localSettings.urls.enable;
+	// 	this.app.workspace.updateOptions();
+	// 	const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+	// 	if (activeView) {
+	// 		this.updateDecorations(activeView);
+	// 	}
+	// }
 	async loadSettings() {
 		this.settings = Object.assign(
 			{},
@@ -121,16 +121,16 @@ class CompactLinksSettingTab extends PluginSettingTab {
 
 		containerEl.createEl("h2", { text: "General Settings" });
 
-		new Setting(containerEl)
-			.setName("Disable plugin in source mode")
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.disableInSourceMode)
-					.onChange(async (value) => {
-						this.plugin.settings.disableInSourceMode = value;
-						await this.plugin.saveSettings();
-					})
-			);
+		// new Setting(containerEl)
+		// 	.setName("Disable plugin in source mode")
+		// 	.addToggle((toggle) =>
+		// 		toggle
+		// 			.setValue(this.plugin.settings.disableInSourceMode)
+		// 			.onChange(async (value) => {
+		// 				this.plugin.settings.disableInSourceMode = value;
+		// 				await this.plugin.saveSettings();
+		// 			})
+		// 	);
 
 		new Setting(containerEl)
 			.setName("Disable while text is selected")
