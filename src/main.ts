@@ -6,8 +6,9 @@ import { CompactLinksSettings, DisplayMode } from "./types";
 
 const DEFAULT_SETTINGS: CompactLinksSettings = {
 	disableInSourceMode: false,
-	aliasLinks: { disableWhenSelected: true, enable: true },
-	urls: { disableWhenSelected: true, displayMode: "domain", enable: true },
+	disableWhenSelected: true,
+	aliasLinks: { enable: true },
+	urls: { displayMode: "domain", enable: true },
 };
 
 export default class CompactLinksPlugin extends Plugin {
@@ -131,6 +132,17 @@ class CompactLinksSettingTab extends PluginSettingTab {
 					})
 			);
 
+		new Setting(containerEl)
+			.setName("Disable while text is selected")
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.disableWhenSelected)
+					.onChange(async (value) => {
+						this.plugin.settings.disableWhenSelected = value;
+						await this.plugin.saveSettings();
+					})
+			);
+
 		containerEl.createEl("h2", { text: "Compact Aliased Links" });
 
 		new Setting(containerEl).setName("Enable").addToggle((toggle) =>
@@ -142,22 +154,6 @@ class CompactLinksSettingTab extends PluginSettingTab {
 					this.display();
 				})
 		);
-
-		if (this.plugin.settings.aliasLinks.enable) {
-			new Setting(containerEl)
-				.setName("Disable while text is selected")
-				.addToggle((toggle) =>
-					toggle
-						.setValue(
-							this.plugin.settings.aliasLinks.disableWhenSelected
-						)
-						.onChange(async (value) => {
-							this.plugin.settings.aliasLinks.disableWhenSelected =
-								value;
-							await this.plugin.saveSettings();
-						})
-				);
-		}
 
 		containerEl.createEl("h2", { text: "Compact External Links" });
 
@@ -195,18 +191,6 @@ class CompactLinksSettingTab extends PluginSettingTab {
 								value as DisplayMode;
 							await this.plugin.saveSettings();
 							this.display();
-						})
-				);
-
-			new Setting(containerEl)
-				.setName("Disable while text is selected")
-				.addToggle((toggle) =>
-					toggle
-						.setValue(this.plugin.settings.urls.disableWhenSelected)
-						.onChange(async (value) => {
-							this.plugin.settings.urls.disableWhenSelected =
-								value;
-							await this.plugin.saveSettings();
 						})
 				);
 		}

@@ -1,17 +1,16 @@
 export interface CompactAliasLinksSettings {
 	enable: boolean;
-	disableWhenSelected: boolean;
 }
 export interface CompactUrlSettings {
 	enable: boolean;
 	displayMode: DisplayMode;
-	disableWhenSelected: boolean;
 }
 
 export type DisplayMode = "hide" | "domain";
 
 export interface CompactLinksSettings {
 	disableInSourceMode: boolean;
+	disableWhenSelected: boolean;
 	aliasLinks: CompactAliasLinksSettings;
 	urls: CompactUrlSettings;
 }

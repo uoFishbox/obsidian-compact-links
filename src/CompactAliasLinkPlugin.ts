@@ -49,7 +49,7 @@ export class CompactAliasLinkPlugin {
 	private shouldProcessDecorations(view: EditorView): boolean {
 		const hasSelection = this.hasSelection(view);
 		return !(
-			(hasSelection && this.settings.aliasLinks.disableWhenSelected) ||
+			(hasSelection && this.settings.disableWhenSelected) ||
 			!this.settings.aliasLinks.enable
 		);
 	}

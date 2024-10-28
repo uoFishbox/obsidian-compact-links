@@ -41,7 +41,7 @@ export class CompactUrlPlugin {
 		const hasSelection = this.hasSelection(this.view);
 		if (
 			!this.settings.urls.enable ||
-			(hasSelection && this.settings.urls.disableWhenSelected)
+			(hasSelection && this.settings.disableWhenSelected)
 		) {
 			return Decoration.none;
 		}
