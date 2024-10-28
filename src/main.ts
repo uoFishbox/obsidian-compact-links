@@ -68,7 +68,6 @@ export default class CompactLinksPlugin extends Plugin {
 	turnOffPluginsTemporarily() {
 		this.settings.aliasLinks.enable = false;
 		this.settings.urls.enable = false;
-		// this.saveSettings();
 		this.app.workspace.updateOptions();
 		const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
 		if (activeView) {
@@ -134,21 +133,19 @@ class CompactLinksSettingTab extends PluginSettingTab {
 
 		containerEl.createEl("h2", { text: "Alias Only View" });
 
-		new Setting(containerEl)
-			.setName("Enable alias only view")
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.aliasLinks.enable)
-					.onChange(async (value) => {
-						this.plugin.settings.aliasLinks.enable = value;
-						await this.plugin.saveSettings();
-						this.display();
-					})
-			);
+		new Setting(containerEl).setName("Enable").addToggle((toggle) =>
+			toggle
+				.setValue(this.plugin.settings.aliasLinks.enable)
+				.onChange(async (value) => {
+					this.plugin.settings.aliasLinks.enable = value;
+					await this.plugin.saveSettings();
+					this.display();
+				})
+		);
 
 		if (this.plugin.settings.aliasLinks.enable) {
 			new Setting(containerEl)
-				.setName("Unhide link names when text selection begins")
+				.setName("Disable during text selection")
 				.addToggle((toggle) =>
 					toggle
 						.setValue(
@@ -164,17 +161,15 @@ class CompactLinksSettingTab extends PluginSettingTab {
 
 		containerEl.createEl("h2", { text: "Smart URL View" });
 
-		new Setting(containerEl)
-			.setName("Enable smart URL view")
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.urls.enable)
-					.onChange(async (value) => {
-						this.plugin.settings.urls.enable = value;
-						await this.plugin.saveSettings();
-						this.display();
-					})
-			);
+		new Setting(containerEl).setName("Enable").addToggle((toggle) =>
+			toggle
+				.setValue(this.plugin.settings.urls.enable)
+				.onChange(async (value) => {
+					this.plugin.settings.urls.enable = value;
+					await this.plugin.saveSettings();
+					this.display();
+				})
+		);
 
 		if (this.plugin.settings.urls.enable) {
 			// if displaymode is set to domain, show the description of the display mode.
