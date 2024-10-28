@@ -1,6 +1,6 @@
 # Obsidian Compact Links Plugin
 
-Compact Links is a plugin that provides a cleaner viewing experience for markdown links by minimizing their display footprint.
+Displays links in a compact format to reduce visual clutter during typing.
 
 ## Features
 
