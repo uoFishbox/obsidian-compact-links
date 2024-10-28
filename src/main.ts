@@ -19,8 +19,8 @@ export default class CompactLinksPlugin extends Plugin {
 		this.registerEditorExtension(createCompactUrlPlugin(this.settings));
 		this.addSettingTab(new CompactLinksSettingTab(this.app, this));
 		this.addCommand({
-			id: "toggle-alias-only-view",
-			name: "Toggle alias only view",
+			id: "toggle-compact-aliased-links",
+			name: "Toggle compact aliased links",
 			callback: () => {
 				this.settings.aliasLinks.enable =
 					!this.settings.aliasLinks.enable;
@@ -29,8 +29,8 @@ export default class CompactLinksPlugin extends Plugin {
 			},
 		});
 		this.addCommand({
-			id: "toggle-smart-url-view",
-			name: "Toggle smart-url-view",
+			id: "toggle-compact-external-links",
+			name: "Toggle compact external links",
 			callback: () => {
 				this.settings.urls.enable = !this.settings.urls.enable;
 				this.saveSettings();
@@ -131,7 +131,7 @@ class CompactLinksSettingTab extends PluginSettingTab {
 					})
 			);
 
-		containerEl.createEl("h2", { text: "Alias Only View" });
+		containerEl.createEl("h2", { text: "Compact Aliased Links" });
 
 		new Setting(containerEl).setName("Enable").addToggle((toggle) =>
 			toggle
@@ -159,7 +159,7 @@ class CompactLinksSettingTab extends PluginSettingTab {
 				);
 		}
 
-		containerEl.createEl("h2", { text: "Smart URL View" });
+		containerEl.createEl("h2", { text: "Compact External Links" });
 
 		new Setting(containerEl).setName("Enable").addToggle((toggle) =>
 			toggle
