@@ -19,7 +19,7 @@ export default class CompactLinksPlugin extends Plugin {
 		this.addSettingTab(new CompactLinksSettingTab(this.app, this));
 		this.addCommand({
 			id: "toggle-compact-links-with-alias",
-			name: "Toggle Compact Links with Alias",
+			name: "Toggle compact links with alias",
 			callback: () => {
 				this.settings.aliasLinks.enable =
 					!this.settings.aliasLinks.enable;
