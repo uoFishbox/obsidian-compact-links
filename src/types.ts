@@ -5,6 +5,7 @@ export interface CompactAliasLinksSettings {
 export interface CompactUrlSettings {
 	enable: boolean;
 	displayMode: DisplayMode;
+	disableWhenSelected: boolean;
 }
 
 export type DisplayMode = "hide" | "domain";

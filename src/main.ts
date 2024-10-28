@@ -7,7 +7,7 @@ import { CompactLinksSettings, DisplayMode } from "./types";
 const DEFAULT_SETTINGS: CompactLinksSettings = {
 	disableInSourceMode: false,
 	aliasLinks: { disableWhenSelected: true, enable: true },
-	urls: { displayMode: "domain", enable: true },
+	urls: { disableWhenSelected: true, displayMode: "domain", enable: true },
 };
 
 export default class CompactLinksPlugin extends Plugin {
@@ -195,6 +195,18 @@ class CompactLinksSettingTab extends PluginSettingTab {
 								value as DisplayMode;
 							await this.plugin.saveSettings();
 							this.display();
+						})
+				);
+
+			new Setting(containerEl)
+				.setName("Disable while text is selected")
+				.addToggle((toggle) =>
+					toggle
+						.setValue(this.plugin.settings.urls.disableWhenSelected)
+						.onChange(async (value) => {
+							this.plugin.settings.urls.disableWhenSelected =
+								value;
+							await this.plugin.saveSettings();
 						})
 				);
 		}

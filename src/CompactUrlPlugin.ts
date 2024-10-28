@@ -38,7 +38,11 @@ export class CompactUrlPlugin {
 	}
 
 	private buildDecorations(view: EditorView): DecorationSet {
-		if (!this.settings.urls.enable) {
+		const hasSelection = this.hasSelection(this.view);
+		if (
+			!this.settings.urls.enable ||
+			(hasSelection && this.settings.urls.disableWhenSelected)
+		) {
 			return Decoration.none;
 		}
 
