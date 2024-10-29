@@ -1,14 +1,14 @@
 import { EditorView, ViewPlugin, ViewUpdate } from "@codemirror/view";
-import { CompactAliasLinkPlugin } from "./CompactAliasLinkPlugin";
+import { CompactUrlPlugin } from "./CompactUrlExtension";
 import { CompactLinksSettings } from "./types";
 
-export function createAliasLinkPlugin(settings: CompactLinksSettings) {
+export function createCompactUrlPlugin(settings: CompactLinksSettings) {
 	const plugin = ViewPlugin.fromClass(
 		class {
-			private plugin: CompactAliasLinkPlugin;
+			private plugin: CompactUrlPlugin;
 
 			constructor(view: EditorView) {
-				this.plugin = new CompactAliasLinkPlugin(settings, view);
+				this.plugin = new CompactUrlPlugin(settings, view);
 			}
 
 			update(update: ViewUpdate) {

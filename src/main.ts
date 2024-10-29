@@ -1,7 +1,7 @@
 import { App, Plugin, PluginSettingTab, Setting } from "obsidian";
 
-import { createAliasLinkPlugin } from "./createCompactAliasLinkPlugin";
-import { createCompactUrlPlugin } from "./createCompactUrlPlugin";
+import { createAliasLinkPlugin } from "./createCompactAliasLinkExtension";
+import { createCompactUrlPlugin } from "./createCompactUrlExtension";
 import { CompactLinksSettings, DisplayMode } from "./types";
 
 const DEFAULT_SETTINGS: CompactLinksSettings = {
