@@ -1,6 +1,6 @@
 # Obsidian Compact Links Plugin
 
-Displays links in a compact format to reduce visual clutter during typing.
+An Obsidian plugin that displays links in a compact format and reduces visual clutter while typing.
 
 ![Title - debug - Obsidian v1.7.4](https://i.gyazo.com/3d1edaabdd6f2f08d72b3df82c1f6bcb.gif)
 
