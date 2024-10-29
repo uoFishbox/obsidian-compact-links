@@ -1,6 +1,5 @@
 import { EditorView, ViewPlugin, ViewUpdate } from "@codemirror/view";
 import { CompactAliasLinkPlugin } from "./CompactAliasLinkPlugin";
-import { compactAliasLinkStyle } from "./styleExtensions";
 import { CompactLinksSettings } from "./types";
 
 export function createAliasLinkPlugin(settings: CompactLinksSettings) {
@@ -25,5 +24,5 @@ export function createAliasLinkPlugin(settings: CompactLinksSettings) {
 		}
 	);
 
-	return [plugin, compactAliasLinkStyle];
+	return [plugin];
 }

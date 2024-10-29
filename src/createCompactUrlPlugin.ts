@@ -1,6 +1,5 @@
 import { EditorView, ViewPlugin, ViewUpdate } from "@codemirror/view";
 import { CompactUrlPlugin } from "./CompactUrlPlugin";
-import { compactUrlStyle } from "./styleExtensions";
 import { CompactLinksSettings } from "./types";
 
 export function createCompactUrlPlugin(settings: CompactLinksSettings) {
@@ -25,5 +24,5 @@ export function createCompactUrlPlugin(settings: CompactLinksSettings) {
 		}
 	);
 
-	return [plugin, compactUrlStyle];
+	return [plugin];
 }

@@ -1,0 +1,22 @@
+.compact-url-hide {
+    color: var(--text-faint);
+    font-size: 1em;
+    cursor: pointer;
+}
+
+.compact-url-domain {
+    color: var(--text-faint);
+    font-size: 1em;
+    cursor: pointer;
+}
+
+.compact-url-scheme {
+    color: var(--text-faint);
+    font-size: 1em;
+    cursor: pointer;
+}
+
+
+.suppress-alias {
+    display: none !important;
+}
