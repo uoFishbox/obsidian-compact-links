@@ -6,7 +6,7 @@ import { CompactLinksSettings, DisplayMode } from "./types";
 
 const DEFAULT_SETTINGS: CompactLinksSettings = {
 	disableInSourceMode: false,
-	disableWhenSelected: true,
+	disableWhenSelected: false,
 	aliasLinks: { enable: true },
 	urls: { displayMode: "domain", enable: true },
 };
