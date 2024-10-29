@@ -1,6 +1,6 @@
 import { EditorView, WidgetType } from "@codemirror/view";
 
-export class CompactUrlWidget extends WidgetType {
+export class CompactMdLinkWidget extends WidgetType {
 	constructor(
 		private readonly url: string,
 		private readonly displayText: string,

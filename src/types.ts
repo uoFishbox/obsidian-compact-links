@@ -11,8 +11,8 @@ export type DisplayMode = "hidden" | "domain";
 export interface CompactLinksSettings {
 	disableInSourceMode: boolean;
 	disableWhenSelected: boolean;
-	aliasLinks: CompactAliasLinksSettings;
-	urls: CompactUrlSettings;
+	compactAliasedLinks: CompactAliasLinksSettings;
+	compactMarkdownLinks: CompactUrlSettings;
 }
 
 export interface ParsedUrl {

@@ -6,8 +6,8 @@ import {
 	EditorView,
 	ViewUpdate,
 } from "@codemirror/view";
-import { CompactUrlWidget } from "./CompactUrlWidget";
-import { COMPACT_URL_STYLES } from "./constants";
+import { CompactMdLinkWidget } from "./CompactMdLinkWidget";
+import { COMPACT_MD_LINK_DECORATION } from "./constants";
 import { CompactLinksSettings, NodeInfo, ParsedUrl } from "./types";
 import { UrlParser } from "./urlParser";
 
@@ -40,7 +40,7 @@ export class CompactUrlPlugin {
 	private buildDecorations(view: EditorView): DecorationSet {
 		const hasSelection = this.hasSelection(this.view);
 		if (
-			!this.settings.urls.enable ||
+			!this.settings.compactMarkdownLinks.enable ||
 			(hasSelection && this.settings.disableWhenSelected)
 		) {
 			return Decoration.none;
@@ -114,7 +114,7 @@ export class CompactUrlPlugin {
 		const { displayText, className } = this.getDisplayProperties(parsedUrl);
 		ranges.push(
 			Decoration.replace({
-				widget: new CompactUrlWidget(
+				widget: new CompactMdLinkWidget(
 					url,
 					displayText,
 					className,
@@ -129,12 +129,12 @@ export class CompactUrlPlugin {
 		displayText: string;
 		className: string;
 	} {
-		if (this.settings.urls.displayMode === "domain") {
+		if (this.settings.compactMarkdownLinks.displayMode === "domain") {
 			return this.getDomainDisplayProperties(parsedUrl);
 		}
 		return {
-			displayText: COMPACT_URL_STYLES.hidden.defaultText,
-			className: COMPACT_URL_STYLES.hidden.className,
+			displayText: COMPACT_MD_LINK_DECORATION.hidden.defaultText,
+			className: COMPACT_MD_LINK_DECORATION.hidden.className,
 		};
 	}
 
@@ -146,8 +146,8 @@ export class CompactUrlPlugin {
 			? `${parsedUrl.scheme}://${parsedUrl.domain}`
 			: parsedUrl.domain;
 		const className = parsedUrl.scheme
-			? `${COMPACT_URL_STYLES.domain.className} ${COMPACT_URL_STYLES.domain.schemeClassName}`
-			: COMPACT_URL_STYLES.domain.className;
+			? `${COMPACT_MD_LINK_DECORATION.domain.className} ${COMPACT_MD_LINK_DECORATION.domain.schemeClassName}`
+			: COMPACT_MD_LINK_DECORATION.domain.className;
 		return { displayText, className };
 	}
 }

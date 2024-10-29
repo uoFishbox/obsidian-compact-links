@@ -1,4 +1,4 @@
-export const COMPACT_URL_STYLES = {
+export const COMPACT_MD_LINK_DECORATION = {
 	hidden: {
 		className: "compact-url-hidden",
 		defaultText: "...",

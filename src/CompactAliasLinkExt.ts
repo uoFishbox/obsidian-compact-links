@@ -50,7 +50,7 @@ export class CompactAliasLinkPlugin {
 		const hasSelection = this.hasSelection(view);
 		return !(
 			(hasSelection && this.settings.disableWhenSelected) ||
-			!this.settings.aliasLinks.enable
+			!this.settings.compactAliasedLinks.enable
 		);
 	}
 

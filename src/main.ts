@@ -1,14 +1,14 @@
 import { App, Plugin, PluginSettingTab, Setting } from "obsidian";
 
-import { createAliasLinkPlugin } from "./createCompactAliasLinkExtension";
-import { createCompactUrlPlugin } from "./createCompactUrlExtension";
+import { createAliasLinkExt } from "./createCompactAliasLinkExt";
+import { createMdLinkExt } from "./createCompactMdLinkExt";
 import { CompactLinksSettings, DisplayMode } from "./types";
 
 const DEFAULT_SETTINGS: CompactLinksSettings = {
 	disableInSourceMode: false,
 	disableWhenSelected: false,
-	aliasLinks: { enable: true },
-	urls: { displayMode: "domain", enable: true },
+	compactAliasedLinks: { enable: true },
+	compactMarkdownLinks: { displayMode: "domain", enable: true },
 };
 
 export default class CompactLinksPlugin extends Plugin {
@@ -16,15 +16,15 @@ export default class CompactLinksPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 
-		this.registerEditorExtension(createAliasLinkPlugin(this.settings));
-		this.registerEditorExtension(createCompactUrlPlugin(this.settings));
+		this.registerEditorExtension(createAliasLinkExt(this.settings));
+		this.registerEditorExtension(createMdLinkExt(this.settings));
 		this.addSettingTab(new CompactLinksSettingTab(this.app, this));
 		this.addCommand({
 			id: "toggle-compact-aliased-links",
 			name: "Toggle compact aliased links",
 			callback: () => {
-				this.settings.aliasLinks.enable =
-					!this.settings.aliasLinks.enable;
+				this.settings.compactAliasedLinks.enable =
+					!this.settings.compactAliasedLinks.enable;
 				this.saveSettings();
 				this.app.workspace.updateOptions();
 			},
@@ -33,7 +33,8 @@ export default class CompactLinksPlugin extends Plugin {
 			id: "toggle-compact-external-links",
 			name: "Toggle compact external links",
 			callback: () => {
-				this.settings.urls.enable = !this.settings.urls.enable;
+				this.settings.compactMarkdownLinks.enable =
+					!this.settings.compactMarkdownLinks.enable;
 				this.saveSettings();
 				this.app.workspace.updateOptions();
 			},
@@ -101,8 +102,8 @@ export default class CompactLinksPlugin extends Plugin {
 	async saveSettings() {
 		await this.saveData(this.settings);
 		this.app.workspace.updateOptions();
-		this.registerEditorExtension(createAliasLinkPlugin(this.settings));
-		this.registerEditorExtension(createCompactUrlPlugin(this.settings));
+		this.registerEditorExtension(createAliasLinkExt(this.settings));
+		this.registerEditorExtension(createMdLinkExt(this.settings));
 	}
 }
 
@@ -147,9 +148,9 @@ class CompactLinksSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl).setName("Enable").addToggle((toggle) =>
 			toggle
-				.setValue(this.plugin.settings.aliasLinks.enable)
+				.setValue(this.plugin.settings.compactAliasedLinks.enable)
 				.onChange(async (value) => {
-					this.plugin.settings.aliasLinks.enable = value;
+					this.plugin.settings.compactAliasedLinks.enable = value;
 					await this.plugin.saveSettings();
 				})
 		);
@@ -158,18 +159,20 @@ class CompactLinksSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl).setName("Enable").addToggle((toggle) =>
 			toggle
-				.setValue(this.plugin.settings.urls.enable)
+				.setValue(this.plugin.settings.compactMarkdownLinks.enable)
 				.onChange(async (value) => {
-					this.plugin.settings.urls.enable = value;
+					this.plugin.settings.compactMarkdownLinks.enable = value;
 					await this.plugin.saveSettings();
 					this.display();
 				})
 		);
 
-		if (this.plugin.settings.urls.enable) {
-			// if displaymode is set to domain, show the description of the display mode.
+		if (this.plugin.settings.compactMarkdownLinks.enable) {
 			let description = "";
-			if (this.plugin.settings.urls.displayMode === "domain") {
+			if (
+				this.plugin.settings.compactMarkdownLinks.displayMode ===
+				"domain"
+			) {
 				description = "Display format: [Title](domain)";
 			} else {
 				description = "Display format: [Title](...)";
@@ -184,9 +187,12 @@ class CompactLinksSettingTab extends PluginSettingTab {
 							hidden: "Hidden",
 							domain: "Show domain",
 						})
-						.setValue(this.plugin.settings.urls.displayMode)
+						.setValue(
+							this.plugin.settings.compactMarkdownLinks
+								.displayMode
+						)
 						.onChange(async (value) => {
-							this.plugin.settings.urls.displayMode =
+							this.plugin.settings.compactMarkdownLinks.displayMode =
 								value as DisplayMode;
 							await this.plugin.saveSettings();
 							this.display();
