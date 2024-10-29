@@ -151,7 +151,6 @@ class CompactLinksSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.aliasLinks.enable = value;
 					await this.plugin.saveSettings();
-					this.display();
 				})
 		);
 
