@@ -1,6 +1,6 @@
 export const COMPACT_URL_STYLES = {
-	hide: {
-		className: "compact-url-hide",
+	hidden: {
+		className: "compact-url-hidden",
 		defaultText: "...",
 	},
 	domain: {

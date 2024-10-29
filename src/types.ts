@@ -6,7 +6,7 @@ export interface CompactUrlSettings {
 	displayMode: DisplayMode;
 }
 
-export type DisplayMode = "hide" | "domain";
+export type DisplayMode = "hidden" | "domain";
 
 export interface CompactLinksSettings {
 	disableInSourceMode: boolean;

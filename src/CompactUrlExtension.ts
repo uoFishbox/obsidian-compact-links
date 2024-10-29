@@ -133,8 +133,8 @@ export class CompactUrlPlugin {
 			return this.getDomainDisplayProperties(parsedUrl);
 		}
 		return {
-			displayText: COMPACT_URL_STYLES.hide.defaultText,
-			className: COMPACT_URL_STYLES.hide.className,
+			displayText: COMPACT_URL_STYLES.hidden.defaultText,
+			className: COMPACT_URL_STYLES.hidden.className,
 		};
 	}
 
