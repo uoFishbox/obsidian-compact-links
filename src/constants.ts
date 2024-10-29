@@ -11,5 +11,4 @@ export const COMPACT_URL_STYLES = {
 
 export const COMPACT_ALIAS_LINK_DECORATION = {
 	class: "suppress-alias",
-	attributes: { style: "display: none" },
 };
