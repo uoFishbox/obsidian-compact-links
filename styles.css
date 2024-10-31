@@ -17,7 +17,8 @@
 }
 
 .compact-alt-truncated {
-    color: var(--text-faint);
+    /* color: var(--text-faint); */
+    color: var(--link-color);
     font-size: 1em;
     cursor: pointer;
 }
