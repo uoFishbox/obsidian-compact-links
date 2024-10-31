@@ -11,7 +11,7 @@ import { COMPACT_MD_LINK_DECORATION } from "./constants";
 import { CompactLinksSettings, NodeInfo, ParsedUrl } from "./types";
 import { UrlParser } from "./urlParser";
 
-export class CompactUrlPlugin {
+export class CompactMdLinkExt {
 	private _decorations: DecorationSet;
 	private _lastViewport: { from: number; to: number }[] = [];
 	private _cachedDecorations: Map<string, Range<Decoration>> = new Map();
