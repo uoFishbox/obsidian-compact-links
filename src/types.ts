@@ -4,6 +4,7 @@ export interface CompactAliasLinksSettings {
 export interface CompactMdLinkSettings {
 	enable: boolean;
 	displayMode: DisplayMode;
+	enableTooltip: boolean;
 }
 
 export type DisplayMode = "hidden" | "domain";

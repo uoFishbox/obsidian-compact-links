@@ -154,7 +154,8 @@ export class CompactMdLinkExt {
 				displayText,
 				className,
 				view,
-				urlRange
+				urlRange,
+				this.settings.compactMarkdownLinks.enableTooltip
 			),
 		}).range(urlRange.start, urlRange.end);
 

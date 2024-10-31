@@ -9,7 +9,11 @@ const DEFAULT_SETTINGS: CompactLinksSettings = {
 	disableInSourceMode: false,
 	disableWhenSelected: false,
 	compactAliasedLinks: { enable: true },
-	compactMarkdownLinks: { displayMode: "domain", enable: true },
+	compactMarkdownLinks: {
+		displayMode: "domain",
+		enable: true,
+		enableTooltip: true,
+	},
 };
 
 export default class CompactLinksPlugin extends Plugin {
@@ -62,6 +66,19 @@ export default class CompactLinksPlugin extends Plugin {
 
 	onunload() {}
 
+	updateExtension(): void {
+		const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+		if (activeView) {
+			const cm = activeView.editor.cm;
+			cm.dispatch({
+				effects: this.extensionCompartment.reconfigure([
+					createAliasLinkExt(this.settings),
+					createMdLinkExt(this.settings),
+				]),
+			});
+		}
+	}
+
 	async loadSettings() {
 		this.settings = Object.assign(
 			{},
@@ -98,6 +115,7 @@ class CompactLinksSettingTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						this.plugin.settings.disableInSourceMode = value;
 						await this.plugin.saveSettings();
+						this.plugin.updateExtension();
 					})
 			);
 
@@ -109,6 +127,7 @@ class CompactLinksSettingTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						this.plugin.settings.disableWhenSelected = value;
 						await this.plugin.saveSettings();
+						this.plugin.updateExtension();
 					})
 			);
 
@@ -120,6 +139,7 @@ class CompactLinksSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.compactAliasedLinks.enable = value;
 					await this.plugin.saveSettings();
+					this.plugin.updateExtension();
 				})
 		);
 
@@ -131,6 +151,7 @@ class CompactLinksSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.compactMarkdownLinks.enable = value;
 					await this.plugin.saveSettings();
+					this.plugin.updateExtension();
 					this.display();
 				})
 		);
@@ -145,6 +166,22 @@ class CompactLinksSettingTab extends PluginSettingTab {
 			} else {
 				description = "Display format: [Title](...)";
 			}
+
+			new Setting(containerEl)
+				.setName("Show tooltip")
+				.addToggle((toggle) =>
+					toggle
+						.setValue(
+							this.plugin.settings.compactMarkdownLinks
+								.enableTooltip
+						)
+						.onChange(async (value) => {
+							this.plugin.settings.compactMarkdownLinks.enableTooltip =
+								value;
+							await this.plugin.saveSettings();
+							this.plugin.updateExtension();
+						})
+				);
 
 			new Setting(containerEl)
 				.setName("URL display format")
@@ -163,6 +200,7 @@ class CompactLinksSettingTab extends PluginSettingTab {
 							this.plugin.settings.compactMarkdownLinks.displayMode =
 								value as DisplayMode;
 							await this.plugin.saveSettings();
+							this.plugin.updateExtension();
 							this.display();
 						})
 				);
