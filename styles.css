@@ -16,6 +16,12 @@
     cursor: pointer;
 }
 
+.compact-alt-truncated {
+    color: var(--text-faint);
+    font-size: 1em;
+    cursor: pointer;
+}
+
 
 .suppress-alias {
     display: none !important;

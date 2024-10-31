@@ -11,7 +11,10 @@ import { COMPACT_MD_LINK_DECORATION } from "./constants";
 import { CompactLinksSettings, NodeInfo, ParsedUrl } from "./types";
 import { UrlParser } from "./urlParser";
 
-export class CompactMdLinkExt {
+export class CompactMdLinkUrlExt {
+	/*
+	This class is responsible for display of the URl portion of the markdown link.
+	 */
 	private _decorations: DecorationSet;
 	private _lastViewport: { from: number; to: number }[] = [];
 	private _cachedDecorations: Map<string, Range<Decoration>> = new Map();

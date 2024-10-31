@@ -2,7 +2,9 @@ import { App, MarkdownView, Plugin, PluginSettingTab, Setting } from "obsidian";
 
 import { Compartment } from "@codemirror/state";
 import { createAliasLinkExt } from "./createCompactAliasLinkExt";
-import { createMdLinkExt } from "./createCompactMdLinkExt";
+import { createMdLinkAltExt } from "./createCompactMdLinkAltExt";
+import { createMdLinkUrlExt } from "./createCompactMdLinkUrlExt";
+
 import { CompactLinksSettings, DisplayMode } from "./types";
 
 const DEFAULT_SETTINGS: CompactLinksSettings = {
@@ -24,14 +26,15 @@ export default class CompactLinksPlugin extends Plugin {
 		await this.loadSettings();
 		this.addSettingTab(new CompactLinksSettingTab(this.app, this));
 
-		// 拡張機能をCompartmentでラップ
+		// wrap the extension in a compartment
 		const extension = this.extensionCompartment.of([
 			createAliasLinkExt(this.settings),
-			createMdLinkExt(this.settings),
+			createMdLinkUrlExt(this.settings),
+			createMdLinkAltExt(this.settings),
 		]);
 		this.registerEditorExtension(extension);
 
-		// layout-changeイベントでビューのモード変更を検出
+		// detect layout change
 		this.registerEvent(
 			this.app.workspace.on("layout-change", async () => {
 				const activeView =
@@ -43,18 +46,19 @@ export default class CompactLinksPlugin extends Plugin {
 					if (this.settings.disableInSourceMode) {
 						const cm = activeView.editor.cm;
 						if (isSourceMode) {
-							// 拡張機能を無効化
+							// disable the extension
 							cm.dispatch({
 								effects: this.extensionCompartment.reconfigure(
 									[]
 								),
 							});
 						} else {
-							// 拡張機能を有効化
+							// enable the extension
 							cm.dispatch({
 								effects: this.extensionCompartment.reconfigure([
 									createAliasLinkExt(this.settings),
-									createMdLinkExt(this.settings),
+									createMdLinkUrlExt(this.settings),
+									createMdLinkAltExt(this.settings),
 								]),
 							});
 						}
@@ -73,7 +77,8 @@ export default class CompactLinksPlugin extends Plugin {
 			cm.dispatch({
 				effects: this.extensionCompartment.reconfigure([
 					createAliasLinkExt(this.settings),
-					createMdLinkExt(this.settings),
+					createMdLinkUrlExt(this.settings),
+					createMdLinkAltExt(this.settings),
 				]),
 			});
 		}

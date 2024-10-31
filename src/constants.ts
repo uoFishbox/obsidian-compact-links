@@ -9,6 +9,15 @@ export const COMPACT_MD_LINK_DECORATION = {
 	},
 };
 
+export const COMPACT_MD_LINK_ALT_DECORATION = {
+	hidden: {
+		className: "compact-alt-hidden",
+	},
+	truncated: {
+		className: "compact-alt-truncated",
+	},
+};
+
 export const COMPACT_ALIAS_LINK_DECORATION = {
 	class: "suppress-alias",
 };

@@ -1,14 +1,14 @@
 import { EditorView, ViewPlugin, ViewUpdate } from "@codemirror/view";
-import { CompactMdLinkExt } from "./CompactMdLinkExt";
+import { CompactMdLinkAltExt } from "./CompactMdLinkAltExt";
 import { CompactLinksSettings } from "./types";
 
-export function createMdLinkExt(settings: CompactLinksSettings) {
+export function createMdLinkAltExt(settings: CompactLinksSettings) {
 	return ViewPlugin.fromClass(
 		class {
-			public plugin: CompactMdLinkExt;
+			public plugin: CompactMdLinkAltExt;
 
 			constructor(public view: EditorView) {
-				this.plugin = new CompactMdLinkExt(settings, view);
+				this.plugin = new CompactMdLinkAltExt(settings, view);
 			}
 
 			update(update: ViewUpdate) {
