@@ -3,11 +3,11 @@ import { CompactAliasLinkPlugin } from "./CompactAliasLinkExt";
 import { CompactLinksSettings } from "./types";
 
 export function createAliasLinkExt(settings: CompactLinksSettings) {
-	const plugin = ViewPlugin.fromClass(
+	return ViewPlugin.fromClass(
 		class {
-			private plugin: CompactAliasLinkPlugin;
+			public plugin: CompactAliasLinkPlugin;
 
-			constructor(view: EditorView) {
+			constructor(public view: EditorView) {
 				this.plugin = new CompactAliasLinkPlugin(settings, view);
 			}
 
@@ -15,14 +15,11 @@ export function createAliasLinkExt(settings: CompactLinksSettings) {
 				this.plugin.update(update);
 			}
 
-			get decorations() {
-				return this.plugin.decorations;
-			}
+			destroy() {}
 		},
 		{
-			decorations: (v) => v.decorations,
+			decorations: (v) => v.plugin.decorations,
+			eventHandlers: {},
 		}
 	);
-
-	return [plugin];
 }

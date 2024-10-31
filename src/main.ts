@@ -1,5 +1,6 @@
-import { App, Plugin, PluginSettingTab, Setting } from "obsidian";
+import { App, MarkdownView, Plugin, PluginSettingTab, Setting } from "obsidian";
 
+import { Compartment } from "@codemirror/state";
 import { createAliasLinkExt } from "./createCompactAliasLinkExt";
 import { createMdLinkExt } from "./createCompactMdLinkExt";
 import { CompactLinksSettings, DisplayMode } from "./types";
@@ -13,84 +14,54 @@ const DEFAULT_SETTINGS: CompactLinksSettings = {
 
 export default class CompactLinksPlugin extends Plugin {
 	settings: CompactLinksSettings = DEFAULT_SETTINGS;
+	private extensionCompartment = new Compartment();
+
 	async onload() {
 		await this.loadSettings();
-
-		this.registerEditorExtension(createAliasLinkExt(this.settings));
-		this.registerEditorExtension(createMdLinkExt(this.settings));
 		this.addSettingTab(new CompactLinksSettingTab(this.app, this));
-		this.addCommand({
-			id: "toggle-compact-aliased-links",
-			name: "Toggle compact aliased links",
-			callback: () => {
-				this.settings.compactAliasedLinks.enable =
-					!this.settings.compactAliasedLinks.enable;
-				this.saveSettings();
-				this.app.workspace.updateOptions();
-			},
-		});
-		this.addCommand({
-			id: "toggle-compact-external-links",
-			name: "Toggle compact external links",
-			callback: () => {
-				this.settings.compactMarkdownLinks.enable =
-					!this.settings.compactMarkdownLinks.enable;
-				this.saveSettings();
-				this.app.workspace.updateOptions();
-			},
-		});
 
-		// this.registerEvent(
-		// 	this.app.workspace.on("layout-change", async () => {
-		// 		const activeView =
-		// 			this.app.workspace.getActiveViewOfType(MarkdownView);
-		// 		if (activeView) {
-		// 			const isSourceMode = activeView.getState()
-		// 				.source as boolean;
+		// 拡張機能をCompartmentでラップ
+		const extension = this.extensionCompartment.of([
+			createAliasLinkExt(this.settings),
+			createMdLinkExt(this.settings),
+		]);
+		this.registerEditorExtension(extension);
 
-		// 			if (this.settings.disableInSourceMode) {
-		// 				if (isSourceMode) {
-		// 					this.turnOffPluginsTemporarily();
-		// 				} else {
-		// 					await this.turnOnPluginsFromLocalSettings();
-		// 				}
-		// 			}
-		// 		}
-		// 	})
-		// );
+		// layout-changeイベントでビューのモード変更を検出
+		this.registerEvent(
+			this.app.workspace.on("layout-change", async () => {
+				const activeView =
+					this.app.workspace.getActiveViewOfType(MarkdownView);
+				if (activeView) {
+					const isSourceMode = activeView.getState()
+						.source as boolean;
+
+					if (this.settings.disableInSourceMode) {
+						const cm = activeView.editor.cm;
+						if (isSourceMode) {
+							// 拡張機能を無効化
+							cm.dispatch({
+								effects: this.extensionCompartment.reconfigure(
+									[]
+								),
+							});
+						} else {
+							// 拡張機能を有効化
+							cm.dispatch({
+								effects: this.extensionCompartment.reconfigure([
+									createAliasLinkExt(this.settings),
+									createMdLinkExt(this.settings),
+								]),
+							});
+						}
+					}
+				}
+			})
+		);
 	}
 
 	onunload() {}
 
-	// updateDecorations(activeView: MarkdownView) {
-	// 	const editorview = activeView.editor.cm;
-	// 	editorview.setState(editorview.state);
-	// }
-
-	// turnOffPluginsTemporarily() {
-	// 	this.settings.aliasLinks.enable = false;
-	// 	this.settings.urls.enable = false;
-	// 	this.app.workspace.updateOptions();
-	// 	const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
-	// 	if (activeView) {
-	// 		this.updateDecorations(activeView);
-	// 	}
-	// }
-
-	// async turnOnPluginsFromLocalSettings() {
-	// 	const localSettings = Object.assign(
-	// 		{},
-	// 		DEFAULT_SETTINGS,
-	// 		await this.loadData()
-	// 	);
-	// 	this.settings.aliasLinks.enable = localSettings.aliasLinks.enable;
-	// 	this.settings.urls.enable = localSettings.urls.enable;
-	// 	this.app.workspace.updateOptions();
-	// 	const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
-	// 	if (activeView) {
-	// 		this.updateDecorations(activeView);
-	// 	}
-	// }
 	async loadSettings() {
 		this.settings = Object.assign(
 			{},
@@ -101,9 +72,6 @@ export default class CompactLinksPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
-		this.app.workspace.updateOptions();
-		this.registerEditorExtension(createAliasLinkExt(this.settings));
-		this.registerEditorExtension(createMdLinkExt(this.settings));
 	}
 }
 
@@ -122,16 +90,16 @@ class CompactLinksSettingTab extends PluginSettingTab {
 
 		containerEl.createEl("h2", { text: "General" });
 
-		// new Setting(containerEl)
-		// 	.setName("Disable plugin in source mode")
-		// 	.addToggle((toggle) =>
-		// 		toggle
-		// 			.setValue(this.plugin.settings.disableInSourceMode)
-		// 			.onChange(async (value) => {
-		// 				this.plugin.settings.disableInSourceMode = value;
-		// 				await this.plugin.saveSettings();
-		// 			})
-		// 	);
+		new Setting(containerEl)
+			.setName("Disable plugin in source mode")
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.disableInSourceMode)
+					.onChange(async (value) => {
+						this.plugin.settings.disableInSourceMode = value;
+						await this.plugin.saveSettings();
+					})
+			);
 
 		new Setting(containerEl)
 			.setName("Disable while text is selected")
