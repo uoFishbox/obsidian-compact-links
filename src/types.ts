@@ -1,7 +1,7 @@
 export interface CompactAliasLinksSettings {
 	enable: boolean;
 }
-export interface CompactUrlSettings {
+export interface CompactMdLinkSettings {
 	enable: boolean;
 	displayMode: DisplayMode;
 }
@@ -12,7 +12,7 @@ export interface CompactLinksSettings {
 	disableInSourceMode: boolean;
 	disableWhenSelected: boolean;
 	compactAliasedLinks: CompactAliasLinksSettings;
-	compactMarkdownLinks: CompactUrlSettings;
+	compactMarkdownLinks: CompactMdLinkSettings;
 }
 
 export interface ParsedUrl {
