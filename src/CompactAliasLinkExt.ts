@@ -16,6 +16,9 @@ import {
 
 export class CompactAliasLinkPlugin {
 	private _decorations: DecorationSet;
+	private _lastViewport: { from: number; to: number }[] = [];
+	private _cachedDecorations: Map<string, Range<Decoration>> = new Map();
+	private _cachedAliasRanges: Map<number, AliasDecorationRange> = new Map();
 
 	constructor(
 		private readonly settings: CompactLinksSettings,
@@ -29,13 +32,35 @@ export class CompactAliasLinkPlugin {
 	}
 
 	update(update: ViewUpdate): void {
-		if (this.shouldUpdateDecorations(update)) {
+		if (
+			update.docChanged ||
+			update.selectionSet ||
+			this.isViewportSignificantlyChanged(update)
+		) {
+			// ドキュメントが変更された場合はキャッシュをクリア
+			if (update.docChanged) {
+				this._cachedDecorations.clear();
+				this._cachedAliasRanges.clear();
+			}
 			this._decorations = this.buildDecorations(update.view);
 		}
 	}
 
-	private shouldUpdateDecorations(update: ViewUpdate): boolean {
-		return update.docChanged || update.selectionSet;
+	private isViewportSignificantlyChanged(update: ViewUpdate): boolean {
+		const currentViewport = update.view.visibleRanges;
+		const hasChanged =
+			this._lastViewport.length !== currentViewport.length ||
+			this._lastViewport.some(
+				(range, i) =>
+					Math.abs(range.from - currentViewport[i].from) > 100 ||
+					Math.abs(range.to - currentViewport[i].to) > 100
+			);
+
+		if (hasChanged) {
+			this._lastViewport = [...currentViewport];
+			return true;
+		}
+		return false;
 	}
 
 	private buildDecorations(view: EditorView): DecorationSet {
@@ -72,7 +97,7 @@ export class CompactAliasLinkPlugin {
 			});
 		}
 
-		return Decoration.set(ranges);
+		return Decoration.set(ranges, true); // ソートをスキップして最適化
 	}
 
 	private processNode(
@@ -82,7 +107,19 @@ export class CompactAliasLinkPlugin {
 	): void {
 		if (!this.isLinkStartNode(node)) return;
 
-		const aliasRange = this.findAliasRange(node);
+		// キャッシュされたエイリアス範囲を確認
+		const cachedAliasRange = this._cachedAliasRanges.get(node.from);
+		let aliasRange: AliasDecorationRange | null;
+
+		if (cachedAliasRange) {
+			aliasRange = cachedAliasRange;
+		} else {
+			aliasRange = this.findAliasRange(node);
+			if (aliasRange) {
+				this._cachedAliasRanges.set(node.from, aliasRange);
+			}
+		}
+
 		if (aliasRange && !this.isCursorInRange(cursor, aliasRange)) {
 			this.addAliasDecoration(ranges, aliasRange);
 		}
@@ -103,18 +140,9 @@ export class CompactAliasLinkPlugin {
 	}
 
 	private findPipeNode(node: SyntaxNode | null): SyntaxNode | null {
-		if (!node) {
-			return null;
-		}
-
-		if (node.type.name.includes("formatting-link-end")) {
-			return null;
-		}
-
-		if (node.type.name.includes("link-alias-pipe")) {
-			return node;
-		}
-
+		if (!node) return null;
+		if (node.type.name.includes("formatting-link-end")) return null;
+		if (node.type.name.includes("link-alias-pipe")) return node;
 		return this.findPipeNode(node.nextSibling);
 	}
 
@@ -129,13 +157,22 @@ export class CompactAliasLinkPlugin {
 		ranges: Range<Decoration>[],
 		range: AliasDecorationRange
 	): void {
-		if (range.startPos < range.pipePos) {
-			ranges.push(
-				Decoration.mark(COMPACT_ALIAS_LINK_DECORATION).range(
-					range.startPos,
-					range.pipePos
-				)
-			);
+		if (range.startPos >= range.pipePos) return;
+
+		const cacheKey = `${range.startPos}-${range.pipePos}`;
+		const cachedDecoration = this._cachedDecorations.get(cacheKey);
+
+		if (cachedDecoration) {
+			ranges.push(cachedDecoration);
+			return;
 		}
+
+		const decoration = Decoration.mark(COMPACT_ALIAS_LINK_DECORATION).range(
+			range.startPos,
+			range.pipePos
+		);
+
+		this._cachedDecorations.set(cacheKey, decoration);
+		ranges.push(decoration);
 	}
 }
