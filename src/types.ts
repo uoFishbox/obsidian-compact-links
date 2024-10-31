@@ -2,12 +2,23 @@ export interface CompactAliasLinksSettings {
 	enable: boolean;
 }
 export interface CompactMdLinkSettings {
-	enable: boolean;
-	displayMode: DisplayMode;
 	enableTooltip: boolean;
+	CompactMdLinkUrlSettings: CompactMdLinkUrlSettings;
+	CompactMdLinkAltSettings: CompactMdLinkAltSettings;
 }
 
-export type DisplayMode = "hidden" | "domain";
+interface CompactMdLinkUrlSettings {
+	enable: boolean;
+	displayMode: UrlDisplayMode;
+}
+
+interface CompactMdLinkAltSettings {
+	enable: boolean;
+	displayMode: AltDisplayMode;
+}
+
+export type UrlDisplayMode = "hidden" | "domain" | "custom";
+export type AltDisplayMode = "truncated" | "custom";
 
 export interface CompactLinksSettings {
 	disableInSourceMode: boolean;

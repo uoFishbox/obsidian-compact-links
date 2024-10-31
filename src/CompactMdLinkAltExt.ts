@@ -71,7 +71,8 @@ export class CompactMdLinkAltExt {
 
 	private shouldBuildDecorations(view: EditorView): boolean {
 		return (
-			this.settings.compactMarkdownLinks.enable &&
+			this.settings.compactMarkdownLinks.CompactMdLinkAltSettings
+				.enable &&
 			!(this.hasSelection(view) && this.settings.disableWhenSelected)
 		);
 	}
@@ -86,7 +87,7 @@ export class CompactMdLinkAltExt {
 				from,
 				to,
 				enter: (node) => {
-					// console.log(node.from, node.to, node.type.name); <- for node debugging
+					console.log(node.from, node.to, node.type.name); //<- for node debugging
 					this.processNode(node, cursor, ranges, view);
 				},
 			});
@@ -128,12 +129,13 @@ export class CompactMdLinkAltExt {
 	}
 
 	private readonly isMdLinkAltNode = (node: NodeInfo): boolean => {
-		return (
-			// Conditional expression for identifying alt text
+		// Conditional expression for identifying alt text
+		const isImage =
 			(node.type.name.includes("image_image-alt-text_link") ||
 				node.type.name.includes("image_image-alt-text_link_strong")) &&
-			!node.type.name.includes("formatting_formatting")
-		);
+			!node.type.name.includes("formatting_formatting");
+
+		return isImage;
 	};
 
 	private isCursorInRange(
@@ -172,22 +174,8 @@ export class CompactMdLinkAltExt {
 		className: string;
 	} {
 		return {
-			displayText: textTruncator(altText, 50),
+			displayText: textTruncator(altText, 30),
 			className: COMPACT_MD_LINK_ALT_DECORATION.truncated.className,
-			// eslint-disable-next-line no-mixed-spaces-and-tabs
 		};
 	}
-
-	// private getDomainDisplayProperties(parsedAlt: ParsedUrl): {
-	// 	displayText: string;
-	// 	className: string;
-	// } {
-	// 	const displayText = parsedAlt.scheme
-	// 		? `${parsedAlt.scheme}://${parsedAlt.domain}`
-	// 		: parsedAlt.domain;
-	// 	const className = parsedAlt.scheme
-	// 		? `${COMPACT_MD_LINK_DECORATION.domain.className} ${COMPACT_MD_LINK_DECORATION.domain.schemeClassName}`
-	// 		: COMPACT_MD_LINK_DECORATION.domain.className;
-	// 	return { displayText, className };
-	// }
 }

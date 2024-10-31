@@ -70,7 +70,8 @@ export class CompactMdLinkUrlExt {
 
 	private shouldBuildDecorations(view: EditorView): boolean {
 		return (
-			this.settings.compactMarkdownLinks.enable &&
+			this.settings.compactMarkdownLinks.CompactMdLinkUrlSettings
+				.enable &&
 			!(this.hasSelection(view) && this.settings.disableWhenSelected)
 		);
 	}
@@ -171,7 +172,8 @@ export class CompactMdLinkUrlExt {
 		displayText: string;
 		className: string;
 	} {
-		return this.settings.compactMarkdownLinks.displayMode === "domain"
+		return this.settings.compactMarkdownLinks.CompactMdLinkUrlSettings
+			.displayMode === "domain"
 			? this.getDomainDisplayProperties(parsedUrl)
 			: {
 					displayText: COMPACT_MD_LINK_DECORATION.hidden.defaultText,
