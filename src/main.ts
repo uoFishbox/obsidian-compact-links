@@ -81,6 +81,18 @@ export default class CompactLinksPlugin extends Plugin {
 		const extension = this.extensionCompartment.of(this.getExtensions());
 		this.registerEditorExtension(extension);
 
+		this.addCommand({
+			id: "test",
+			name: "test command",
+			editorCallback: (editor, view) => {
+				if (!view.editor) return;
+				const editorView = view.editor.cm as EditorView;
+
+				const plugin = editorView.plugin(this.aliasLinkExt);
+				console.log(plugin);
+			},
+		});
+
 		// detect layout change
 		this.registerEvent(
 			this.app.workspace.on("layout-change", async () => {
