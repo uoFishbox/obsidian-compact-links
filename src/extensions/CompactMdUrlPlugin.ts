@@ -23,7 +23,7 @@ export interface DisplayProperties {
 	className: string;
 }
 
-export class CompactMdLinkUrlExt implements PluginValue {
+export class CompactMdUrlPlugin implements PluginValue {
 	private _decorations: DecorationSet;
 	private decorationCache: DecorationCache;
 

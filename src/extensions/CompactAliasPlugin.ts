@@ -16,7 +16,7 @@ import {
 } from "../types";
 import { DecorationCache } from "../utils/DecorationCache";
 
-export class CompactAliasLinkPlugin implements PluginValue {
+export class CompactAliasPlugin implements PluginValue {
 	private _decorations: DecorationSet;
 	private decorationCache: DecorationCache;
 	private _cachedAliasRanges: Map<number, AliasDecorationRange> = new Map();

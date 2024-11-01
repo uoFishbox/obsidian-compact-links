@@ -9,13 +9,13 @@ import {
 
 import { Compartment, Extension } from "@codemirror/state";
 import { EditorView, ViewPlugin } from "@codemirror/view";
-import { createAliasLinkExt } from "./factories/createCompactAliasLinkExt";
-import { createMdLinkAltExt } from "./factories/createCompactMdLinkAltExt";
-import { createMdLinkUrlExt } from "./factories/createCompactMdLinkUrlExt";
+import { createCompactAliasPlugin } from "./factories/createCompactAliasLinkPlugin";
+import { createCompactMdAltPlugin } from "./factories/createCompactMdAltPlugin";
+import { createCompactMdUrlPlugin } from "./factories/createCompactMdUrlPlugin";
 
-import { CompactAliasLinkPlugin } from "./extensions/CompactAliasLinkExt";
-import { CompactMdLinkAltExt } from "./extensions/CompactMdLinkAltExt";
-import { CompactMdLinkUrlExt } from "./extensions/CompactMdLinkUrlExt";
+import { CompactAliasPlugin } from "./extensions/CompactAliasPlugin";
+import { CompactMdAltPlugin } from "./extensions/CompactMdAltPlugin";
+import { CompactMdUrlPlugin } from "./extensions/CompactMdUrlPlugin";
 import { CompactLinksSettings, UrlDisplayMode } from "./types";
 
 const DEFAULT_SETTINGS: CompactLinksSettings = {
@@ -38,9 +38,9 @@ const DEFAULT_SETTINGS: CompactLinksSettings = {
 export default class CompactLinksPlugin extends Plugin {
 	settings: CompactLinksSettings = DEFAULT_SETTINGS;
 	private extensionCompartment = new Compartment();
-	private aliasLinkExt!: ViewPlugin<CompactAliasLinkPlugin>;
-	private mdLinkUrlExt!: ViewPlugin<CompactMdLinkUrlExt>;
-	private mdLinkAltExt!: ViewPlugin<CompactMdLinkAltExt>;
+	private aliasLinkExt!: ViewPlugin<CompactAliasPlugin>;
+	private mdLinkUrlExt!: ViewPlugin<CompactMdUrlPlugin>;
+	private mdLinkAltExt!: ViewPlugin<CompactMdAltPlugin>;
 
 	constructor(app: App, manifest: PluginManifest) {
 		super(app, manifest);
@@ -50,9 +50,9 @@ export default class CompactLinksPlugin extends Plugin {
 	}
 
 	private initializeExtensions(): void {
-		this.aliasLinkExt = createAliasLinkExt(this.settings);
-		this.mdLinkUrlExt = createMdLinkUrlExt(this.settings);
-		this.mdLinkAltExt = createMdLinkAltExt(this.settings);
+		this.aliasLinkExt = createCompactAliasPlugin(this.settings);
+		this.mdLinkUrlExt = createCompactMdUrlPlugin(this.settings);
+		this.mdLinkAltExt = createCompactMdAltPlugin(this.settings);
 	}
 
 	private getExtensions(): Extension[] {

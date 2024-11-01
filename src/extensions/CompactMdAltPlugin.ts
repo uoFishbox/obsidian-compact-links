@@ -22,7 +22,7 @@ interface DisplayProperties {
 	className: string;
 }
 
-export class CompactMdLinkAltExt implements PluginValue {
+export class CompactMdAltPlugin implements PluginValue {
 	private readonly ALT_TEXT_MAX_LENGTH = 30;
 	private _decorations: DecorationSet;
 	private cachedDecorations: Map<string, Range<Decoration>> = new Map();
