@@ -4,6 +4,7 @@ import {
 	Decoration,
 	DecorationSet,
 	EditorView,
+	PluginValue,
 	ViewUpdate,
 } from "@codemirror/view";
 import { CompactMdLinkWidget } from "./CompactMdLinkWidget";
@@ -21,7 +22,7 @@ interface DisplayProperties {
 	className: string;
 }
 
-export class CompactMdLinkAltExt {
+export class CompactMdLinkAltExt implements PluginValue {
 	private readonly VIEWPORT_CHANGE_THRESHOLD = 100;
 	private readonly ALT_TEXT_MAX_LENGTH = 30;
 	private decorations: DecorationSet;

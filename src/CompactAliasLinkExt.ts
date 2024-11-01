@@ -4,6 +4,7 @@ import {
 	Decoration,
 	DecorationSet,
 	EditorView,
+	PluginValue,
 	ViewUpdate,
 } from "@codemirror/view";
 import { COMPACT_ALIAS_LINK_DECORATION } from "./constants";
@@ -14,7 +15,7 @@ import {
 	SyntaxNode,
 } from "./types";
 
-export class CompactAliasLinkPlugin {
+export class CompactAliasLinkPlugin implements PluginValue {
 	private _decorations: DecorationSet;
 	private _lastViewport: { from: number; to: number }[] = [];
 	private _cachedDecorations: Map<string, Range<Decoration>> = new Map();

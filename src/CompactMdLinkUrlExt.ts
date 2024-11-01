@@ -4,6 +4,7 @@ import {
 	Decoration,
 	DecorationSet,
 	EditorView,
+	PluginValue,
 	ViewUpdate,
 } from "@codemirror/view";
 import { CompactMdLinkWidget } from "./CompactMdLinkWidget";
@@ -11,17 +12,17 @@ import { COMPACT_MD_LINK_DECORATION } from "./constants";
 import { CompactLinksSettings, NodeInfo, ParsedUrl } from "./types";
 import { UrlParser } from "./urlParser";
 
-interface UrlRange {
+export interface UrlRange {
 	start: number;
 	end: number;
 }
 
-interface DisplayProperties {
+export interface DisplayProperties {
 	displayText: string;
 	className: string;
 }
 
-export class CompactMdLinkUrlExt {
+export class CompactMdLinkUrlExt implements PluginValue {
 	private readonly VIEWPORT_CHANGE_THRESHOLD = 100;
 	private decorations: DecorationSet;
 	private lastViewport: { from: number; to: number }[] = [];
