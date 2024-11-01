@@ -1,5 +1,5 @@
 import { EditorView, PluginSpec, ViewPlugin } from "@codemirror/view";
-import { CompactAliasPlugin } from "../extensions/CompactAliasPlugin";
+import { CompactAliasPlugin } from "../cmplugins/CompactAliasPlugin";
 import { CompactLinksSettings } from "../types";
 
 export function createCompactAliasPlugin(settings: CompactLinksSettings) {

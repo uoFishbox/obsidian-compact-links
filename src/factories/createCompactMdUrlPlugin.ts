@@ -1,5 +1,5 @@
 import { EditorView, PluginSpec, ViewPlugin } from "@codemirror/view";
-import { CompactMdUrlPlugin } from "../extensions/CompactMdUrlPlugin";
+import { CompactMdUrlPlugin } from "../cmplugins/CompactMdUrlPlugin";
 import { CompactLinksSettings } from "../types";
 
 export function createCompactMdUrlPlugin(settings: CompactLinksSettings) {

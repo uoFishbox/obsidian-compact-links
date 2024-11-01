@@ -1,5 +1,5 @@
 import { EditorView, PluginSpec, ViewPlugin } from "@codemirror/view";
-import { CompactMdAltPlugin } from "../extensions/CompactMdAltPlugin";
+import { CompactMdAltPlugin } from "../cmplugins/CompactMdAltPlugin";
 import { CompactLinksSettings } from "../types";
 
 export function createCompactMdAltPlugin(settings: CompactLinksSettings) {

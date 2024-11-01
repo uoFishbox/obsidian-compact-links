@@ -13,9 +13,9 @@ import { createCompactAliasPlugin } from "./factories/createCompactAliasLinkPlug
 import { createCompactMdAltPlugin } from "./factories/createCompactMdAltPlugin";
 import { createCompactMdUrlPlugin } from "./factories/createCompactMdUrlPlugin";
 
-import { CompactAliasPlugin } from "./extensions/CompactAliasPlugin";
-import { CompactMdAltPlugin } from "./extensions/CompactMdAltPlugin";
-import { CompactMdUrlPlugin } from "./extensions/CompactMdUrlPlugin";
+import { CompactAliasPlugin } from "./cmplugins/CompactAliasPlugin";
+import { CompactMdAltPlugin } from "./cmplugins/CompactMdAltPlugin";
+import { CompactMdUrlPlugin } from "./cmplugins/CompactMdUrlPlugin";
 import { CompactLinksSettings, UrlDisplayMode } from "./types";
 
 const DEFAULT_SETTINGS: CompactLinksSettings = {
