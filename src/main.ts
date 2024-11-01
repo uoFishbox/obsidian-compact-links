@@ -7,7 +7,7 @@ import {
 	Setting,
 } from "obsidian";
 
-import { Compartment } from "@codemirror/state";
+import { Compartment, Extension } from "@codemirror/state";
 import { EditorView, ViewPlugin } from "@codemirror/view";
 import { createAliasLinkExt } from "./createCompactAliasLinkExt";
 import { createMdLinkAltExt } from "./createCompactMdLinkAltExt";
@@ -55,16 +55,30 @@ export default class CompactLinksPlugin extends Plugin {
 		this.mdLinkAltExt = createMdLinkAltExt(this.settings);
 	}
 
+	private getExtensions(): Extension[] {
+		const extensions: Extension[] = [];
+		if (this.settings.compactAliasedLinks.enable) {
+			extensions.push(this.aliasLinkExt);
+		}
+		if (
+			this.settings.compactMarkdownLinks.CompactMdLinkUrlSettings.enable
+		) {
+			extensions.push(this.mdLinkUrlExt);
+		}
+		if (
+			this.settings.compactMarkdownLinks.CompactMdLinkAltSettings.enable
+		) {
+			extensions.push(this.mdLinkAltExt);
+		}
+		return extensions;
+	}
+
 	async onload() {
 		await this.loadSettings();
 		this.addSettingTab(new CompactLinksSettingTab(this.app, this));
 
 		// wrap the extension in a compartment
-		const extension = this.extensionCompartment.of([
-			this.aliasLinkExt,
-			this.mdLinkUrlExt,
-			this.mdLinkAltExt,
-		]);
+		const extension = this.extensionCompartment.of(this.getExtensions());
 		this.registerEditorExtension(extension);
 
 		// detect layout change
@@ -75,26 +89,20 @@ export default class CompactLinksPlugin extends Plugin {
 				if (activeView) {
 					const isSourceMode = activeView.getState()
 						.source as boolean;
+					const cm = activeView.editor.cm;
 
-					if (this.settings.disableInSourceMode) {
-						const cm = activeView.editor.cm;
-						if (isSourceMode) {
-							// disable the extension
-							cm.dispatch({
-								effects: this.extensionCompartment.reconfigure(
-									[]
-								),
-							});
-						} else {
-							// enable the extension
-							cm.dispatch({
-								effects: this.extensionCompartment.reconfigure([
-									createAliasLinkExt(this.settings),
-									createMdLinkUrlExt(this.settings),
-									createMdLinkAltExt(this.settings),
-								]),
-							});
-						}
+					if (this.settings.disableInSourceMode && isSourceMode) {
+						// disable the extension
+						cm.dispatch({
+							effects: this.extensionCompartment.reconfigure([]),
+						});
+					} else {
+						// enable the extension
+						cm.dispatch({
+							effects: this.extensionCompartment.reconfigure(
+								this.getExtensions()
+							),
+						});
 					}
 				}
 			})
@@ -108,11 +116,9 @@ export default class CompactLinksPlugin extends Plugin {
 		if (activeView) {
 			const cm = activeView.editor.cm;
 			cm.dispatch({
-				effects: this.extensionCompartment.reconfigure([
-					createAliasLinkExt(this.settings),
-					createMdLinkUrlExt(this.settings),
-					createMdLinkAltExt(this.settings),
-				]),
+				effects: this.extensionCompartment.reconfigure(
+					this.getExtensions()
+				),
 			});
 		}
 	}
