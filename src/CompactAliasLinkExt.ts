@@ -14,31 +14,25 @@ import {
 	NodeInfo,
 	SyntaxNode,
 } from "./types";
+import { DecorationCache } from "./utils/DecorationCache";
 
 export class CompactAliasLinkPlugin implements PluginValue {
 	private _decorations: DecorationSet;
-	private _lastViewport: { from: number; to: number }[] = [];
-	private _cachedDecorations: Map<string, Range<Decoration>> = new Map();
+	private decorationCache: DecorationCache;
 	private _cachedAliasRanges: Map<number, AliasDecorationRange> = new Map();
 
 	constructor(
 		private readonly settings: CompactLinksSettings,
 		view: EditorView
 	) {
+		this.decorationCache = new DecorationCache();
 		this._decorations = this.buildDecorations(view);
 	}
 
 	update(update: ViewUpdate): void {
-		if (
-			update.docChanged ||
-			update.selectionSet ||
-			this.isViewportSignificantlyChanged(update)
-		) {
-			// ドキュメントが変更された場合はキャッシュをクリア
-			if (update.docChanged) {
-				this._cachedDecorations.clear();
-				this._cachedAliasRanges.clear();
-			}
+		if (this.shouldInvalidateCache(update)) {
+			this.decorationCache.clear();
+			this._cachedAliasRanges.clear();
 			this._decorations = this.buildDecorations(update.view);
 		}
 	}
@@ -47,25 +41,8 @@ export class CompactAliasLinkPlugin implements PluginValue {
 		return this._decorations;
 	}
 
-	private isViewportSignificantlyChanged(update: ViewUpdate): boolean {
-		const currentViewport = update.view.visibleRanges;
-		const hasChanged =
-			this._lastViewport.length !== currentViewport.length ||
-			this._lastViewport.some(
-				(range, i) =>
-					Math.abs(range.from - currentViewport[i].from) > 100 ||
-					Math.abs(range.to - currentViewport[i].to) > 100
-			);
-
-		if (hasChanged) {
-			this._lastViewport = [...currentViewport];
-			return true;
-		}
-		return false;
-	}
-
 	destroy(): void {
-		this._cachedDecorations.clear();
+		this.decorationCache.clear();
 		this._cachedAliasRanges.clear();
 	}
 
@@ -103,7 +80,7 @@ export class CompactAliasLinkPlugin implements PluginValue {
 			});
 		}
 
-		return Decoration.set(ranges, true); // ソートをスキップして最適化
+		return Decoration.set(ranges, false);
 	}
 
 	private processNode(
@@ -113,7 +90,7 @@ export class CompactAliasLinkPlugin implements PluginValue {
 	): void {
 		if (!this.isLinkStartNode(node)) return;
 
-		// キャッシュされたエイリアス範囲を確認
+		// check if the alias is in the visible range
 		const cachedAliasRange = this._cachedAliasRanges.get(node.from);
 		let aliasRange: AliasDecorationRange | null;
 
@@ -165,8 +142,11 @@ export class CompactAliasLinkPlugin implements PluginValue {
 	): void {
 		if (range.startPos >= range.pipePos) return;
 
-		const cacheKey = `${range.startPos}-${range.pipePos}`;
-		const cachedDecoration = this._cachedDecorations.get(cacheKey);
+		const cacheKey = this.decorationCache.generateKey(
+			range.startPos,
+			range.pipePos
+		);
+		const cachedDecoration = this.decorationCache.get(cacheKey);
 
 		if (cachedDecoration) {
 			ranges.push(cachedDecoration);
@@ -178,7 +158,13 @@ export class CompactAliasLinkPlugin implements PluginValue {
 			range.pipePos
 		);
 
-		this._cachedDecorations.set(cacheKey, decoration);
+		this.decorationCache.set(cacheKey, decoration);
 		ranges.push(decoration);
+	}
+
+	private shouldInvalidateCache(update: ViewUpdate): boolean {
+		return (
+			update.docChanged || update.selectionSet || update.viewportChanged
+		);
 	}
 }

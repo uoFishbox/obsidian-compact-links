@@ -10,7 +10,8 @@ import {
 import { CompactMdLinkWidget } from "./CompactMdLinkWidget";
 import { COMPACT_MD_LINK_DECORATION } from "./constants";
 import { CompactLinksSettings, NodeInfo, ParsedUrl } from "./types";
-import { UrlParser } from "./urlParser";
+import { DecorationCache } from "./utils/DecorationCache";
+import { UrlParser } from "./utils/urlParser";
 
 export interface UrlRange {
 	start: number;
@@ -23,15 +24,14 @@ export interface DisplayProperties {
 }
 
 export class CompactMdLinkUrlExt implements PluginValue {
-	private readonly VIEWPORT_CHANGE_THRESHOLD = 100;
 	private _decorations: DecorationSet;
-	private lastViewport: { from: number; to: number }[] = [];
-	private cachedDecorations: Map<string, Range<Decoration>> = new Map();
+	private decorationCache: DecorationCache;
 
 	constructor(
 		private readonly settings: CompactLinksSettings,
 		private readonly view: EditorView
 	) {
+		this.decorationCache = new DecorationCache();
 		this._decorations = this.buildDecorations(view);
 	}
 
@@ -40,57 +40,18 @@ export class CompactMdLinkUrlExt implements PluginValue {
 	}
 
 	update(update: ViewUpdate): void {
-		if (this.shouldUpdateDecorations(update)) {
+		if (this.shouldInvalidateCache(update)) {
+			this.decorationCache.clear();
 			this._decorations = this.buildDecorations(update.view);
 		}
 	}
 
 	destroy(): void {
-		this.cachedDecorations.clear();
+		this.decorationCache.clear();
 	}
 
 	get decorations(): DecorationSet {
 		return this._decorations;
-	}
-
-	private shouldUpdateDecorations(update: ViewUpdate): boolean {
-		return (
-			update.docChanged ||
-			update.selectionSet ||
-			this.isViewportSignificantlyChanged(update)
-		);
-	}
-
-	private isViewportSignificantlyChanged(update: ViewUpdate): boolean {
-		const currentViewport = update.view.visibleRanges;
-		const hasSignificantChange = this.checkViewportChange(currentViewport);
-
-		if (hasSignificantChange) {
-			this.lastViewport = [...currentViewport];
-		}
-		return hasSignificantChange;
-	}
-
-	private checkViewportChange(
-		currentViewport: readonly { from: number; to: number }[]
-	): boolean {
-		return (
-			this.lastViewport.length !== currentViewport.length ||
-			this.lastViewport.some((range, i) =>
-				this.isRangeSignificantlyDifferent(range, currentViewport[i])
-			)
-		);
-	}
-
-	private isRangeSignificantlyDifferent(
-		oldRange: { from: number; to: number },
-		newRange: { from: number; to: number }
-	): boolean {
-		return (
-			Math.abs(oldRange.from - newRange.from) >
-				this.VIEWPORT_CHANGE_THRESHOLD ||
-			Math.abs(oldRange.to - newRange.to) > this.VIEWPORT_CHANGE_THRESHOLD
-		);
 	}
 
 	private buildDecorations(view: EditorView): DecorationSet {
@@ -100,6 +61,9 @@ export class CompactMdLinkUrlExt implements PluginValue {
 
 		const ranges: Range<Decoration>[] = [];
 		const cursor = view.state.selection.main.head;
+
+		this.decorationCache.clear();
+
 		this.processVisibleRanges(view, ranges, cursor);
 		return Decoration.set(ranges, true);
 	}
@@ -146,7 +110,6 @@ export class CompactMdLinkUrlExt implements PluginValue {
 
 		const urlRange: UrlRange = { start: node.from, end: node.to };
 		if (this.isCursorInRange(cursor, urlRange)) return;
-
 		this.processUrlDecoration(view, ranges, urlRange);
 	}
 
@@ -155,8 +118,11 @@ export class CompactMdLinkUrlExt implements PluginValue {
 		ranges: Range<Decoration>[],
 		urlRange: UrlRange
 	): void {
-		const cacheKey = `${urlRange.start}-${urlRange.end}`;
-		const cachedDecoration = this.cachedDecorations.get(cacheKey);
+		const cacheKey = this.decorationCache.generateKey(
+			urlRange.start,
+			urlRange.end
+		);
+		const cachedDecoration = this.decorationCache.get(cacheKey);
 
 		if (cachedDecoration) {
 			ranges.push(cachedDecoration);
@@ -194,7 +160,7 @@ export class CompactMdLinkUrlExt implements PluginValue {
 			urlRange
 		);
 
-		this.cachedDecorations.set(cacheKey, decoration);
+		this.decorationCache.set(cacheKey, decoration);
 		ranges.push(decoration);
 	}
 
@@ -256,5 +222,11 @@ export class CompactMdLinkUrlExt implements PluginValue {
 			displayText: COMPACT_MD_LINK_DECORATION.hidden.defaultText,
 			className: COMPACT_MD_LINK_DECORATION.hidden.className,
 		};
+	}
+
+	private shouldInvalidateCache(update: ViewUpdate): boolean {
+		return (
+			update.docChanged || update.selectionSet || update.viewportChanged
+		);
 	}
 }

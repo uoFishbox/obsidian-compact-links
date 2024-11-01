@@ -9,8 +9,8 @@ import {
 } from "@codemirror/view";
 import { CompactMdLinkWidget } from "./CompactMdLinkWidget";
 import { COMPACT_MD_LINK_ALT_DECORATION } from "./constants";
-import { textTruncator } from "./textTruncator";
 import { CompactLinksSettings, NodeInfo } from "./types";
+import { textTruncator } from "./utils/textTruncator";
 
 interface AltRange {
 	start: number;
@@ -23,10 +23,8 @@ interface DisplayProperties {
 }
 
 export class CompactMdLinkAltExt implements PluginValue {
-	private readonly VIEWPORT_CHANGE_THRESHOLD = 100;
 	private readonly ALT_TEXT_MAX_LENGTH = 30;
 	private _decorations: DecorationSet;
-	private lastViewport: { from: number; to: number }[] = [];
 	private cachedDecorations: Map<string, Range<Decoration>> = new Map();
 
 	constructor(
@@ -37,7 +35,10 @@ export class CompactMdLinkAltExt implements PluginValue {
 	}
 
 	update(update: ViewUpdate): void {
-		if (this.shouldUpdateDecorations(update)) {
+		if (update.docChanged || update.selectionSet) {
+			this.cachedDecorations.clear();
+			this._decorations = this.buildDecorations(update.view);
+		} else if (update.viewportChanged) {
 			this._decorations = this.buildDecorations(update.view);
 		}
 	}
@@ -50,48 +51,6 @@ export class CompactMdLinkAltExt implements PluginValue {
 		return this._decorations;
 	}
 
-	private shouldUpdateDecorations(update: ViewUpdate): boolean {
-		return (
-			update.docChanged ||
-			update.selectionSet ||
-			this.isViewportSignificantlyChanged(update)
-		);
-	}
-
-	private isViewportSignificantlyChanged(update: ViewUpdate): boolean {
-		const currentViewport = update.view.visibleRanges;
-		const hasSignificantChange = this.checkViewportChange([
-			...currentViewport,
-		]);
-
-		if (hasSignificantChange) {
-			this.lastViewport = [...currentViewport];
-		}
-		return hasSignificantChange;
-	}
-
-	private checkViewportChange(
-		currentViewport: readonly { from: number; to: number }[]
-	): boolean {
-		return (
-			this.lastViewport.length !== currentViewport.length ||
-			this.lastViewport.some((range, i) =>
-				this.isRangeSignificantlyDifferent(range, currentViewport[i])
-			)
-		);
-	}
-
-	private isRangeSignificantlyDifferent(
-		oldRange: { from: number; to: number },
-		newRange: { from: number; to: number }
-	): boolean {
-		return (
-			Math.abs(oldRange.from - newRange.from) >
-				this.VIEWPORT_CHANGE_THRESHOLD ||
-			Math.abs(oldRange.to - newRange.to) > this.VIEWPORT_CHANGE_THRESHOLD
-		);
-	}
-
 	private buildDecorations(view: EditorView): DecorationSet {
 		if (!this.isDecorationEnabled(view)) {
 			return Decoration.none;
@@ -99,6 +58,9 @@ export class CompactMdLinkAltExt implements PluginValue {
 
 		const ranges: Range<Decoration>[] = [];
 		const cursor = view.state.selection.main.head;
+
+		this.cachedDecorations.clear();
+
 		this.processVisibleRanges(view, ranges, cursor);
 		return Decoration.set(ranges, true);
 	}
@@ -132,7 +94,6 @@ export class CompactMdLinkAltExt implements PluginValue {
 			from,
 			to,
 			enter: (node) => {
-				console.log(node.from, node.to, node.type.name);
 				this.processNode(node, cursor, ranges, view);
 			},
 		});
