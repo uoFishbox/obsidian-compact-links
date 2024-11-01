@@ -28,10 +28,6 @@ export class CompactAliasLinkPlugin implements PluginValue {
 		this._decorations = this.buildDecorations(view);
 	}
 
-	get decorations(): DecorationSet {
-		return this._decorations;
-	}
-
 	update(update: ViewUpdate): void {
 		if (
 			update.docChanged ||
@@ -45,6 +41,10 @@ export class CompactAliasLinkPlugin implements PluginValue {
 			}
 			this._decorations = this.buildDecorations(update.view);
 		}
+	}
+
+	public get decorations(): DecorationSet {
+		return this._decorations;
 	}
 
 	private isViewportSignificantlyChanged(update: ViewUpdate): boolean {
@@ -62,6 +62,11 @@ export class CompactAliasLinkPlugin implements PluginValue {
 			return true;
 		}
 		return false;
+	}
+
+	destroy(): void {
+		this._cachedDecorations.clear();
+		this._cachedAliasRanges.clear();
 	}
 
 	private buildDecorations(view: EditorView): DecorationSet {

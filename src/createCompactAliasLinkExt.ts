@@ -1,25 +1,18 @@
-import { EditorView, ViewPlugin, ViewUpdate } from "@codemirror/view";
+import { EditorView, PluginSpec, ViewPlugin } from "@codemirror/view";
 import { CompactAliasLinkPlugin } from "./CompactAliasLinkExt";
 import { CompactLinksSettings } from "./types";
 
 export function createAliasLinkExt(settings: CompactLinksSettings) {
 	return ViewPlugin.fromClass(
-		class {
-			public plugin: CompactAliasLinkPlugin;
-
-			constructor(public view: EditorView) {
-				this.plugin = new CompactAliasLinkPlugin(settings, view);
+		class extends CompactAliasLinkPlugin {
+			constructor(view: EditorView) {
+				super(settings, view);
 			}
-
-			update(update: ViewUpdate) {
-				this.plugin.update(update);
-			}
-
-			destroy() {}
 		},
-		{
-			decorations: (v) => v.plugin.decorations,
-			eventHandlers: {},
-		}
+		pluginSpec
 	);
 }
+
+const pluginSpec: PluginSpec<CompactAliasLinkPlugin> = {
+	decorations: (value: CompactAliasLinkPlugin) => value.decorations,
+};

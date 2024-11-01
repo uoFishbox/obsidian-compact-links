@@ -1,10 +1,21 @@
-import { App, MarkdownView, Plugin, PluginSettingTab, Setting } from "obsidian";
+import {
+	App,
+	MarkdownView,
+	Plugin,
+	PluginManifest,
+	PluginSettingTab,
+	Setting,
+} from "obsidian";
 
 import { Compartment } from "@codemirror/state";
+import { EditorView, ViewPlugin } from "@codemirror/view";
 import { createAliasLinkExt } from "./createCompactAliasLinkExt";
 import { createMdLinkAltExt } from "./createCompactMdLinkAltExt";
 import { createMdLinkUrlExt } from "./createCompactMdLinkUrlExt";
 
+import { CompactAliasLinkPlugin } from "./CompactAliasLinkExt";
+import { CompactMdLinkAltExt } from "./CompactMdLinkAltExt";
+import { CompactMdLinkUrlExt } from "./CompactMdLinkUrlExt";
 import { CompactLinksSettings, UrlDisplayMode } from "./types";
 
 const DEFAULT_SETTINGS: CompactLinksSettings = {
@@ -27,6 +38,22 @@ const DEFAULT_SETTINGS: CompactLinksSettings = {
 export default class CompactLinksPlugin extends Plugin {
 	settings: CompactLinksSettings = DEFAULT_SETTINGS;
 	private extensionCompartment = new Compartment();
+	private aliasLinkExt!: ViewPlugin<CompactAliasLinkPlugin>;
+	private mdLinkUrlExt!: ViewPlugin<CompactMdLinkUrlExt>;
+	private mdLinkAltExt!: ViewPlugin<CompactMdLinkAltExt>;
+
+	constructor(app: App, manifest: PluginManifest) {
+		super(app, manifest);
+		this.settings = DEFAULT_SETTINGS;
+		this.extensionCompartment = new Compartment();
+		this.initializeExtensions();
+	}
+
+	private initializeExtensions(): void {
+		this.aliasLinkExt = createAliasLinkExt(this.settings);
+		this.mdLinkUrlExt = createMdLinkUrlExt(this.settings);
+		this.mdLinkAltExt = createMdLinkAltExt(this.settings);
+	}
 
 	async onload() {
 		await this.loadSettings();
@@ -34,9 +61,9 @@ export default class CompactLinksPlugin extends Plugin {
 
 		// wrap the extension in a compartment
 		const extension = this.extensionCompartment.of([
-			createAliasLinkExt(this.settings),
-			createMdLinkUrlExt(this.settings),
-			createMdLinkAltExt(this.settings),
+			this.aliasLinkExt,
+			this.mdLinkUrlExt,
+			this.mdLinkAltExt,
 		]);
 		this.registerEditorExtension(extension);
 

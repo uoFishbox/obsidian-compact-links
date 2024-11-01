@@ -1,25 +1,18 @@
-import { EditorView, ViewPlugin, ViewUpdate } from "@codemirror/view";
+import { EditorView, PluginSpec, ViewPlugin } from "@codemirror/view";
 import { CompactMdLinkUrlExt } from "./CompactMdLinkUrlExt";
 import { CompactLinksSettings } from "./types";
 
 export function createMdLinkUrlExt(settings: CompactLinksSettings) {
 	return ViewPlugin.fromClass(
-		class {
-			public plugin: CompactMdLinkUrlExt;
-
-			constructor(public view: EditorView) {
-				this.plugin = new CompactMdLinkUrlExt(settings, view);
+		class extends CompactMdLinkUrlExt {
+			constructor(view: EditorView) {
+				super(settings, view);
 			}
-
-			update(update: ViewUpdate) {
-				this.plugin.update(update);
-			}
-
-			destroy() {}
 		},
-		{
-			decorations: (v) => v.plugin.getDecorations(),
-			eventHandlers: {},
-		}
+		pluginSpec
 	);
 }
+
+const pluginSpec: PluginSpec<CompactMdLinkUrlExt> = {
+	decorations: (value: CompactMdLinkUrlExt) => value.decorations,
+};

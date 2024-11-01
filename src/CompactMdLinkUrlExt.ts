@@ -24,7 +24,7 @@ export interface DisplayProperties {
 
 export class CompactMdLinkUrlExt implements PluginValue {
 	private readonly VIEWPORT_CHANGE_THRESHOLD = 100;
-	private decorations: DecorationSet;
+	private _decorations: DecorationSet;
 	private lastViewport: { from: number; to: number }[] = [];
 	private cachedDecorations: Map<string, Range<Decoration>> = new Map();
 
@@ -32,17 +32,25 @@ export class CompactMdLinkUrlExt implements PluginValue {
 		private readonly settings: CompactLinksSettings,
 		private readonly view: EditorView
 	) {
-		this.decorations = this.buildDecorations(view);
+		this._decorations = this.buildDecorations(view);
 	}
 
 	getDecorations(): DecorationSet {
-		return this.decorations;
+		return this._decorations;
 	}
 
 	update(update: ViewUpdate): void {
 		if (this.shouldUpdateDecorations(update)) {
-			this.decorations = this.buildDecorations(update.view);
+			this._decorations = this.buildDecorations(update.view);
 		}
+	}
+
+	destroy(): void {
+		this.cachedDecorations.clear();
+	}
+
+	get decorations(): DecorationSet {
+		return this._decorations;
 	}
 
 	private shouldUpdateDecorations(update: ViewUpdate): boolean {

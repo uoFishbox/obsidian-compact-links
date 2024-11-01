@@ -25,7 +25,7 @@ interface DisplayProperties {
 export class CompactMdLinkAltExt implements PluginValue {
 	private readonly VIEWPORT_CHANGE_THRESHOLD = 100;
 	private readonly ALT_TEXT_MAX_LENGTH = 30;
-	private decorations: DecorationSet;
+	private _decorations: DecorationSet;
 	private lastViewport: { from: number; to: number }[] = [];
 	private cachedDecorations: Map<string, Range<Decoration>> = new Map();
 
@@ -33,17 +33,21 @@ export class CompactMdLinkAltExt implements PluginValue {
 		private readonly settings: CompactLinksSettings,
 		private readonly view: EditorView
 	) {
-		this.decorations = this.buildDecorations(view);
-	}
-
-	getDecorations(): DecorationSet {
-		return this.decorations;
+		this._decorations = this.buildDecorations(view);
 	}
 
 	update(update: ViewUpdate): void {
 		if (this.shouldUpdateDecorations(update)) {
-			this.decorations = this.buildDecorations(update.view);
+			this._decorations = this.buildDecorations(update.view);
 		}
+	}
+
+	destroy(): void {
+		this.cachedDecorations.clear();
+	}
+
+	public get decorations(): DecorationSet {
+		return this._decorations;
 	}
 
 	private shouldUpdateDecorations(update: ViewUpdate): boolean {
