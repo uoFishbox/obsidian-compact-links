@@ -11,7 +11,7 @@ import { CompactMdLinkWidget } from "../components/CompactMdLinkWidget";
 import { COMPACT_MD_LINK_DECORATION } from "../constants";
 import { CompactLinksSettings, NodeInfo, ParsedUrl } from "../types";
 import { DecorationCache } from "../utils/DecorationCache";
-import { UrlParser } from "../utils/urlParser";
+import { UrlParser } from "../utils/UrlParser";
 
 export interface UrlRange {
 	start: number;
