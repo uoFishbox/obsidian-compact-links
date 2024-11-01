@@ -11,52 +11,70 @@ import { COMPACT_MD_LINK_DECORATION } from "./constants";
 import { CompactLinksSettings, NodeInfo, ParsedUrl } from "./types";
 import { UrlParser } from "./urlParser";
 
-export class CompactMdLinkUrlExt {
-	/*
-	This class is responsible for display of the URl portion of the markdown link.
-	 */
-	private _decorations: DecorationSet;
-	private _lastViewport: { from: number; to: number }[] = [];
-	private _cachedDecorations: Map<string, Range<Decoration>> = new Map();
+export class CompactMdLinkUrlExtension {
+	private decorations: DecorationSet = Decoration.none;
+	private lastViewport: { from: number; to: number }[] = [];
+	private cachedDecorations: Map<string, Range<Decoration>> = new Map();
 
 	constructor(
 		private readonly settings: CompactLinksSettings,
 		private readonly view: EditorView
 	) {
-		this._decorations = this.buildDecorations(view);
-	}
-
-	get decorations(): DecorationSet {
-		return this._decorations;
+		this.decorations = this.buildDecorations(view);
 	}
 
 	update(update: ViewUpdate): void {
-		if (
-			update.docChanged ||
-			update.selectionSet ||
-			this.isViewportSignificantlyChanged(update)
-		) {
-			this._decorations = this.buildDecorations(update.view);
+		if (this.shouldRebuildDecorations(update)) {
+			this.decorations = this.buildDecorations(update.view);
 		}
 	}
 
+	get decorationSet(): DecorationSet {
+		return this.decorations;
+	}
+
+	/**
+	 * determine if decorations should be rebuilt
+	 */
+	private shouldRebuildDecorations(update: ViewUpdate): boolean {
+		const requiresDocChange =
+			update.docChanged ||
+			update.selectionSet ||
+			this.isViewportSignificantlyChanged(update);
+
+		const decorationsEnabled =
+			this.settings.compactMarkdownLinks.CompactMdLinkUrlSettings.enable;
+
+		const shouldDisable =
+			this.hasSelection(update.view) && this.settings.disableWhenSelected;
+
+		return requiresDocChange && decorationsEnabled && !shouldDisable;
+	}
+
+	/**
+	 * check if the viewport has significantly changed
+	 */
 	private isViewportSignificantlyChanged(update: ViewUpdate): boolean {
 		const currentViewport = update.view.visibleRanges;
+
 		const hasChanged =
-			this._lastViewport.length !== currentViewport.length ||
-			this._lastViewport.some(
+			this.lastViewport.length !== currentViewport.length ||
+			!this.lastViewport.every(
 				(range, i) =>
-					Math.abs(range.from - currentViewport[i].from) > 100 ||
-					Math.abs(range.to - currentViewport[i].to) > 100
+					Math.abs(range.from - currentViewport[i].from) <= 100 &&
+					Math.abs(range.to - currentViewport[i].to) <= 100
 			);
 
 		if (hasChanged) {
-			this._lastViewport = [...currentViewport];
-			return true;
+			this.lastViewport = currentViewport.map((range) => ({ ...range }));
 		}
-		return false;
+
+		return hasChanged;
 	}
 
+	/**
+	 * build decorations
+	 */
 	private buildDecorations(view: EditorView): DecorationSet {
 		if (!this.shouldBuildDecorations(view)) {
 			return Decoration.none;
@@ -64,33 +82,37 @@ export class CompactMdLinkUrlExt {
 
 		const ranges: Range<Decoration>[] = [];
 		const cursor = view.state.selection.main.head;
-		this.processVisibleRanges(view, ranges, cursor);
-		return Decoration.set(ranges, true); // 'true' for better performance
-	}
 
-	private shouldBuildDecorations(view: EditorView): boolean {
-		return (
-			this.settings.compactMarkdownLinks.CompactMdLinkUrlSettings
-				.enable &&
-			!(this.hasSelection(view) && this.settings.disableWhenSelected)
-		);
-	}
-
-	private processVisibleRanges(
-		view: EditorView,
-		ranges: Range<Decoration>[],
-		cursor: number
-	): void {
 		for (const { from, to } of view.visibleRanges) {
 			syntaxTree(view.state).iterate({
 				from,
 				to,
-				enter: (node) => this.processNode(node, cursor, ranges, view),
+				enter: (node) =>
+					this.handleSyntaxNode(node, cursor, ranges, view),
 			});
 		}
+
+		return Decoration.set(ranges, true); // パフォーマンス向上のために 'true'
 	}
 
-	private processNode(
+	/**
+	 * determine if decorations should be built
+	 */
+	private shouldBuildDecorations(view: EditorView): boolean {
+		const urlSettings =
+			this.settings.compactMarkdownLinks.CompactMdLinkUrlSettings;
+		const hasSelection = this.hasSelection(view);
+
+		return (
+			urlSettings.enable &&
+			!(hasSelection && this.settings.disableWhenSelected)
+		);
+	}
+
+	/**
+	 * process syntax node
+	 */
+	private handleSyntaxNode(
 		node: NodeInfo,
 		cursor: number,
 		ranges: Range<Decoration>[],
@@ -99,11 +121,11 @@ export class CompactMdLinkUrlExt {
 		if (!this.isUrlNode(node)) return;
 
 		const urlRange = { start: node.from, end: node.to };
-		if (this.isCursorInRange(cursor, urlRange)) return;
 
-		// generate cache key
-		const cacheKey = `${urlRange.start}-${urlRange.end}`;
-		const cachedDecoration = this._cachedDecorations.get(cacheKey);
+		if (this.isCursorInside(urlRange, cursor)) return;
+
+		const cacheKey = this.generateCacheKey(urlRange);
+		const cachedDecoration = this.cachedDecorations.get(cacheKey);
 
 		if (cachedDecoration) {
 			ranges.push(cachedDecoration);
@@ -112,47 +134,32 @@ export class CompactMdLinkUrlExt {
 
 		const url = view.state.doc.sliceString(urlRange.start, urlRange.end);
 		const parsedUrl = UrlParser.parse(url);
+
 		if (parsedUrl.isUrl) {
-			this.addUrlDecoration(
-				ranges,
+			const decoration = this.createUrlDecoration(
 				url,
 				parsedUrl,
 				view,
-				urlRange,
-				cacheKey
+				urlRange
 			);
+			this.cachedDecorations.set(cacheKey, decoration);
+			ranges.push(decoration);
 		}
 	}
 
-	private hasSelection(view: EditorView): boolean {
-		const { from, to } = view.state.selection.main;
-		return from !== to;
-	}
-
-	private readonly isUrlNode = (node: NodeInfo): boolean => {
-		return (
-			node.type.name.includes("string_url") ||
-			node.type.name.includes("string_strong_url")
-		);
-	};
-
-	private isCursorInRange(
-		cursor: number,
-		range: { start: number; end: number }
-	): boolean {
-		return cursor >= range.start && cursor <= range.end;
-	}
-
-	private addUrlDecoration(
-		ranges: Range<Decoration>[],
+	/**
+	 * create URL decoration
+	 */
+	private createUrlDecoration(
 		url: string,
 		parsedUrl: ParsedUrl,
 		view: EditorView,
-		urlRange: { start: number; end: number },
-		cacheKey: string
-	): void {
-		const { displayText, className } = this.getDisplayProperties(parsedUrl);
-		const decoration = Decoration.replace({
+		urlRange: { start: number; end: number }
+	): Range<Decoration> {
+		const { displayText, className } =
+			this.determineDisplayProperties(parsedUrl);
+
+		return Decoration.replace({
 			widget: new CompactMdLinkWidget(
 				url,
 				displayText,
@@ -162,18 +169,20 @@ export class CompactMdLinkUrlExt {
 				this.settings.compactMarkdownLinks.enableTooltip
 			),
 		}).range(urlRange.start, urlRange.end);
-
-		// save to cache
-		this._cachedDecorations.set(cacheKey, decoration);
-		ranges.push(decoration);
 	}
 
-	private getDisplayProperties(parsedUrl: ParsedUrl): {
+	/**
+	 * determine display properties
+	 */
+	private determineDisplayProperties(parsedUrl: ParsedUrl): {
 		displayText: string;
 		className: string;
 	} {
-		return this.settings.compactMarkdownLinks.CompactMdLinkUrlSettings
-			.displayMode === "domain"
+		const displayMode =
+			this.settings.compactMarkdownLinks.CompactMdLinkUrlSettings
+				.displayMode;
+
+		return displayMode === "domain"
 			? this.getDomainDisplayProperties(parsedUrl)
 			: {
 					displayText: COMPACT_MD_LINK_DECORATION.hidden.defaultText,
@@ -182,6 +191,9 @@ export class CompactMdLinkUrlExt {
 			  };
 	}
 
+	/**
+	 * get domain display properties
+	 */
 	private getDomainDisplayProperties(parsedUrl: ParsedUrl): {
 		displayText: string;
 		className: string;
@@ -189,9 +201,47 @@ export class CompactMdLinkUrlExt {
 		const displayText = parsedUrl.scheme
 			? `${parsedUrl.scheme}://${parsedUrl.domain}`
 			: parsedUrl.domain;
+
 		const className = parsedUrl.scheme
 			? `${COMPACT_MD_LINK_DECORATION.domain.className} ${COMPACT_MD_LINK_DECORATION.domain.schemeClassName}`
 			: COMPACT_MD_LINK_DECORATION.domain.className;
+
 		return { displayText, className };
+	}
+
+	/**
+	 * check if there is a selection
+	 */
+	private hasSelection(view: EditorView): boolean {
+		const { from, to } = view.state.selection.main;
+		return from !== to;
+	}
+
+	/**
+	 * whether the node is a URL node
+	 */
+	private isUrlNode(node: NodeInfo): boolean {
+		const typeName = node.type.name.toLowerCase();
+		return (
+			typeName.includes("string_url") ||
+			typeName.includes("string_strong_url")
+		);
+	}
+
+	/**
+	 * whether the cursor is inside the range
+	 */
+	private isCursorInside(
+		range: { start: number; end: number },
+		cursor: number
+	): boolean {
+		return cursor >= range.start && cursor <= range.end;
+	}
+
+	/**
+	 * generate cache key
+	 */
+	private generateCacheKey(range: { start: number; end: number }): string {
+		return `${range.start}-${range.end}`;
 	}
 }
