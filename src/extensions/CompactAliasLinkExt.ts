@@ -7,14 +7,14 @@ import {
 	PluginValue,
 	ViewUpdate,
 } from "@codemirror/view";
-import { COMPACT_ALIAS_LINK_DECORATION } from "./constants";
+import { COMPACT_ALIAS_LINK_DECORATION } from "../constants";
 import {
 	AliasDecorationRange,
 	CompactLinksSettings,
 	NodeInfo,
 	SyntaxNode,
-} from "./types";
-import { DecorationCache } from "./utils/DecorationCache";
+} from "../types";
+import { DecorationCache } from "../utils/DecorationCache";
 
 export class CompactAliasLinkPlugin implements PluginValue {
 	private _decorations: DecorationSet;

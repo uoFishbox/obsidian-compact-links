@@ -9,13 +9,13 @@ import {
 
 import { Compartment, Extension } from "@codemirror/state";
 import { EditorView, ViewPlugin } from "@codemirror/view";
-import { createAliasLinkExt } from "./createCompactAliasLinkExt";
-import { createMdLinkAltExt } from "./createCompactMdLinkAltExt";
-import { createMdLinkUrlExt } from "./createCompactMdLinkUrlExt";
+import { createAliasLinkExt } from "./factories/createCompactAliasLinkExt";
+import { createMdLinkAltExt } from "./factories/createCompactMdLinkAltExt";
+import { createMdLinkUrlExt } from "./factories/createCompactMdLinkUrlExt";
 
-import { CompactAliasLinkPlugin } from "./CompactAliasLinkExt";
-import { CompactMdLinkAltExt } from "./CompactMdLinkAltExt";
-import { CompactMdLinkUrlExt } from "./CompactMdLinkUrlExt";
+import { CompactAliasLinkPlugin } from "./extensions/CompactAliasLinkExt";
+import { CompactMdLinkAltExt } from "./extensions/CompactMdLinkAltExt";
+import { CompactMdLinkUrlExt } from "./extensions/CompactMdLinkUrlExt";
 import { CompactLinksSettings, UrlDisplayMode } from "./types";
 
 const DEFAULT_SETTINGS: CompactLinksSettings = {

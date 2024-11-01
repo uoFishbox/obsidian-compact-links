@@ -7,10 +7,10 @@ import {
 	PluginValue,
 	ViewUpdate,
 } from "@codemirror/view";
-import { CompactMdLinkWidget } from "./CompactMdLinkWidget";
-import { COMPACT_MD_LINK_ALT_DECORATION } from "./constants";
-import { CompactLinksSettings, NodeInfo } from "./types";
-import { textTruncator } from "./utils/textTruncator";
+import { CompactMdLinkWidget } from "../components/CompactMdLinkWidget";
+import { COMPACT_MD_LINK_ALT_DECORATION } from "../constants";
+import { CompactLinksSettings, NodeInfo } from "../types";
+import { textTruncator } from "../utils/textTruncator";
 
 interface AltRange {
 	start: number;

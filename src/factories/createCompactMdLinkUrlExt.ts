@@ -1,6 +1,6 @@
 import { EditorView, PluginSpec, ViewPlugin } from "@codemirror/view";
-import { CompactMdLinkUrlExt } from "./CompactMdLinkUrlExt";
-import { CompactLinksSettings } from "./types";
+import { CompactMdLinkUrlExt } from "../extensions/CompactMdLinkUrlExt";
+import { CompactLinksSettings } from "../types";
 
 export function createMdLinkUrlExt(settings: CompactLinksSettings) {
 	return ViewPlugin.fromClass(

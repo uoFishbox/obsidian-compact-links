@@ -7,11 +7,11 @@ import {
 	PluginValue,
 	ViewUpdate,
 } from "@codemirror/view";
-import { CompactMdLinkWidget } from "./CompactMdLinkWidget";
-import { COMPACT_MD_LINK_DECORATION } from "./constants";
-import { CompactLinksSettings, NodeInfo, ParsedUrl } from "./types";
-import { DecorationCache } from "./utils/DecorationCache";
-import { UrlParser } from "./utils/urlParser";
+import { CompactMdLinkWidget } from "../components/CompactMdLinkWidget";
+import { COMPACT_MD_LINK_DECORATION } from "../constants";
+import { CompactLinksSettings, NodeInfo, ParsedUrl } from "../types";
+import { DecorationCache } from "../utils/DecorationCache";
+import { UrlParser } from "../utils/urlParser";
 
 export interface UrlRange {
 	start: number;

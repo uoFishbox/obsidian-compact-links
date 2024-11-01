@@ -1,6 +1,6 @@
 import { EditorView, PluginSpec, ViewPlugin } from "@codemirror/view";
-import { CompactAliasLinkPlugin } from "./CompactAliasLinkExt";
-import { CompactLinksSettings } from "./types";
+import { CompactAliasLinkPlugin } from "../extensions/CompactAliasLinkExt";
+import { CompactLinksSettings } from "../types";
 
 export function createAliasLinkExt(settings: CompactLinksSettings) {
 	return ViewPlugin.fromClass(

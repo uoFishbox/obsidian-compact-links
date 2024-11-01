@@ -1,4 +1,4 @@
-import { ParsedUrl } from "./types";
+import { ParsedUrl } from "../types";
 
 export class UrlParser {
 	static parse(url: string): ParsedUrl {
