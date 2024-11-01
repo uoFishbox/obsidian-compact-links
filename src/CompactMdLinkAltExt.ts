@@ -11,68 +11,97 @@ import { COMPACT_MD_LINK_ALT_DECORATION } from "./constants";
 import { textTruncator } from "./textTruncator";
 import { CompactLinksSettings, NodeInfo } from "./types";
 
-export class CompactMdLinkAltExt {
-	/*
-    This class is responsible for creating decorations for the alt text of markdown links.
-     */
+interface AltRange {
+	start: number;
+	end: number;
+}
 
-	private _decorations: DecorationSet;
-	private _lastViewport: { from: number; to: number }[] = [];
-	private _cachedDecorations: Map<string, Range<Decoration>> = new Map();
+interface DisplayProperties {
+	displayText: string;
+	className: string;
+}
+
+export class CompactMdLinkAltExt {
+	private readonly VIEWPORT_CHANGE_THRESHOLD = 100;
+	private readonly ALT_TEXT_MAX_LENGTH = 30;
+	private decorations: DecorationSet;
+	private lastViewport: { from: number; to: number }[] = [];
+	private cachedDecorations: Map<string, Range<Decoration>> = new Map();
 
 	constructor(
 		private readonly settings: CompactLinksSettings,
 		private readonly view: EditorView
 	) {
-		this._decorations = this.buildDecorations(view);
+		this.decorations = this.buildDecorations(view);
 	}
 
-	get decorations(): DecorationSet {
-		return this._decorations;
+	getDecorations(): DecorationSet {
+		return this.decorations;
 	}
 
 	update(update: ViewUpdate): void {
-		if (
+		if (this.shouldUpdateDecorations(update)) {
+			this.decorations = this.buildDecorations(update.view);
+		}
+	}
+
+	private shouldUpdateDecorations(update: ViewUpdate): boolean {
+		return (
 			update.docChanged ||
 			update.selectionSet ||
 			this.isViewportSignificantlyChanged(update)
-		) {
-			this._decorations = this.buildDecorations(update.view);
-		}
+		);
 	}
 
 	private isViewportSignificantlyChanged(update: ViewUpdate): boolean {
 		const currentViewport = update.view.visibleRanges;
-		const hasChanged =
-			this._lastViewport.length !== currentViewport.length ||
-			this._lastViewport.some(
-				(range, i) =>
-					Math.abs(range.from - currentViewport[i].from) > 100 ||
-					Math.abs(range.to - currentViewport[i].to) > 100
-			);
+		const hasSignificantChange = this.checkViewportChange([
+			...currentViewport,
+		]);
 
-		if (hasChanged) {
-			this._lastViewport = [...currentViewport];
-			return true;
+		if (hasSignificantChange) {
+			this.lastViewport = [...currentViewport];
 		}
-		return false;
+		return hasSignificantChange;
+	}
+
+	private checkViewportChange(
+		currentViewport: readonly { from: number; to: number }[]
+	): boolean {
+		return (
+			this.lastViewport.length !== currentViewport.length ||
+			this.lastViewport.some((range, i) =>
+				this.isRangeSignificantlyDifferent(range, currentViewport[i])
+			)
+		);
+	}
+
+	private isRangeSignificantlyDifferent(
+		oldRange: { from: number; to: number },
+		newRange: { from: number; to: number }
+	): boolean {
+		return (
+			Math.abs(oldRange.from - newRange.from) >
+				this.VIEWPORT_CHANGE_THRESHOLD ||
+			Math.abs(oldRange.to - newRange.to) > this.VIEWPORT_CHANGE_THRESHOLD
+		);
 	}
 
 	private buildDecorations(view: EditorView): DecorationSet {
-		if (!this.shouldBuildDecorations(view)) {
+		if (!this.isDecorationEnabled(view)) {
 			return Decoration.none;
 		}
 
 		const ranges: Range<Decoration>[] = [];
 		const cursor = view.state.selection.main.head;
 		this.processVisibleRanges(view, ranges, cursor);
-		return Decoration.set(ranges, true); // 'true' for better performance
+		return Decoration.set(ranges, true);
 	}
 
-	private shouldBuildDecorations(view: EditorView): boolean {
+	private isDecorationEnabled(view: EditorView): boolean {
+		const { CompactMdLinkAltSettings } = this.settings.compactMarkdownLinks;
 		return (
-			this.settings.compactMarkdownLinks.CompactMdLinkAltSettings
-				.enable &&
+			CompactMdLinkAltSettings.enable &&
 			!(this.hasSelection(view) && this.settings.disableWhenSelected)
 		);
 	}
@@ -82,16 +111,26 @@ export class CompactMdLinkAltExt {
 		ranges: Range<Decoration>[],
 		cursor: number
 	): void {
-		for (const { from, to } of view.visibleRanges) {
-			syntaxTree(view.state).iterate({
-				from,
-				to,
-				enter: (node) => {
-					console.log(node.from, node.to, node.type.name); //<- for node debugging
-					this.processNode(node, cursor, ranges, view);
-				},
-			});
-		}
+		view.visibleRanges.forEach(({ from, to }) => {
+			this.processVisibleRange(view, ranges, cursor, from, to);
+		});
+	}
+
+	private processVisibleRange(
+		view: EditorView,
+		ranges: Range<Decoration>[],
+		cursor: number,
+		from: number,
+		to: number
+	): void {
+		syntaxTree(view.state).iterate({
+			from,
+			to,
+			enter: (node) => {
+				console.log(node.from, node.to, node.type.name);
+				this.processNode(node, cursor, ranges, view);
+			},
+		});
 	}
 
 	private processNode(
@@ -102,12 +141,19 @@ export class CompactMdLinkAltExt {
 	): void {
 		if (!this.isMdLinkAltNode(node)) return;
 
-		const altRange = { start: node.from, end: node.to };
+		const altRange: AltRange = { start: node.from, end: node.to };
 		if (this.isCursorInRange(cursor, altRange)) return;
 
-		// generate cache key
+		this.processAltDecoration(view, ranges, altRange);
+	}
+
+	private processAltDecoration(
+		view: EditorView,
+		ranges: Range<Decoration>[],
+		altRange: AltRange
+	): void {
 		const cacheKey = `${altRange.start}-${altRange.end}`;
-		const cachedDecoration = this._cachedDecorations.get(cacheKey);
+		const cachedDecoration = this.cachedDecorations.get(cacheKey);
 
 		if (cachedDecoration) {
 			ranges.push(cachedDecoration);
@@ -118,9 +164,44 @@ export class CompactMdLinkAltExt {
 			altRange.start,
 			altRange.end
 		);
-		// const parsedUrl = UrlParser.parse(altText);
+		this.createAndAddDecoration(ranges, altText, view, altRange, cacheKey);
+	}
 
-		this.addAltDecoration(ranges, altText, view, altRange, cacheKey);
+	private createAndAddDecoration(
+		ranges: Range<Decoration>[],
+		altText: string,
+		view: EditorView,
+		altRange: AltRange,
+		cacheKey: string
+	): void {
+		const displayProps = this.getDisplayProperties(altText);
+		const decoration = this.createDecoration(
+			altText,
+			displayProps,
+			view,
+			altRange
+		);
+
+		this.cachedDecorations.set(cacheKey, decoration);
+		ranges.push(decoration);
+	}
+
+	private createDecoration(
+		altText: string,
+		displayProps: DisplayProperties,
+		view: EditorView,
+		altRange: AltRange
+	): Range<Decoration> {
+		return Decoration.replace({
+			widget: new CompactMdLinkWidget(
+				altText,
+				displayProps.displayText,
+				displayProps.className,
+				view,
+				altRange,
+				this.settings.compactMarkdownLinks.enableTooltip
+			),
+		}).range(altRange.start, altRange.end);
 	}
 
 	private hasSelection(view: EditorView): boolean {
@@ -128,53 +209,21 @@ export class CompactMdLinkAltExt {
 		return from !== to;
 	}
 
-	private readonly isMdLinkAltNode = (node: NodeInfo): boolean => {
-		// Conditional expression for identifying alt text
+	private isMdLinkAltNode(node: NodeInfo): boolean {
 		const isImage =
 			(node.type.name.includes("image_image-alt-text_link") ||
 				node.type.name.includes("image_image-alt-text_link_strong")) &&
 			!node.type.name.includes("formatting_formatting");
-
 		return isImage;
-	};
+	}
 
-	private isCursorInRange(
-		cursor: number,
-		range: { start: number; end: number }
-	): boolean {
+	private isCursorInRange(cursor: number, range: AltRange): boolean {
 		return cursor >= range.start && cursor <= range.end;
 	}
 
-	private addAltDecoration(
-		ranges: Range<Decoration>[],
-		altText: string,
-		view: EditorView,
-		altRange: { start: number; end: number },
-		cacheKey: string
-	): void {
-		const { displayText, className } = this.getDisplayProperties(altText);
-		const decoration = Decoration.replace({
-			widget: new CompactMdLinkWidget(
-				altText,
-				displayText,
-				className,
-				view,
-				altRange,
-				this.settings.compactMarkdownLinks.enableTooltip
-			),
-		}).range(altRange.start, altRange.end);
-
-		// save to cache
-		this._cachedDecorations.set(cacheKey, decoration);
-		ranges.push(decoration);
-	}
-
-	private getDisplayProperties(altText: string): {
-		displayText: string;
-		className: string;
-	} {
+	private getDisplayProperties(altText: string): DisplayProperties {
 		return {
-			displayText: textTruncator(altText, 30),
+			displayText: textTruncator(altText, this.ALT_TEXT_MAX_LENGTH),
 			className: COMPACT_MD_LINK_ALT_DECORATION.truncated.className,
 		};
 	}

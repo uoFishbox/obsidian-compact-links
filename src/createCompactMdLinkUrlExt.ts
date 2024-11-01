@@ -18,7 +18,7 @@ export function createMdLinkUrlExt(settings: CompactLinksSettings) {
 			destroy() {}
 		},
 		{
-			decorations: (v) => v.plugin.decorations,
+			decorations: (v) => v.plugin.getDecorations(),
 			eventHandlers: {},
 		}
 	);
