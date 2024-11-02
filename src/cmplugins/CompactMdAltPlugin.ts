@@ -23,7 +23,6 @@ interface DisplayProperties {
 }
 
 export class CompactMdAltPlugin implements PluginValue {
-	private readonly ALT_TEXT_MAX_LENGTH = 30;
 	private readonly ALT_TEXT_PATTERN = /(?<=!\[)[^[\]]+(?=\])/g;
 	private _decorations: DecorationSet;
 	private decorationCache: DecorationCache;
@@ -206,7 +205,11 @@ export class CompactMdAltPlugin implements PluginValue {
 
 	private getDisplayProperties(altText: string): DisplayProperties {
 		return {
-			displayText: textTruncator(altText, this.ALT_TEXT_MAX_LENGTH),
+			displayText: textTruncator(
+				altText,
+				this.settings.compactMarkdownLinks.CompactMdLinkAltSettings
+					.displayLength
+			),
 			className: COMPACT_MD_LINK_ALT_DECORATION.truncated.className,
 		};
 	}
