@@ -1,4 +1,3 @@
-import { syntaxTree } from "@codemirror/language";
 import { Range } from "@codemirror/state";
 import {
 	Decoration,
@@ -25,6 +24,7 @@ interface DisplayProperties {
 
 export class CompactMdAltPlugin implements PluginValue {
 	private readonly ALT_TEXT_MAX_LENGTH = 30;
+	private readonly ALT_TEXT_PATTERN = /(?<=!\[)[^[\]]+(?=\])/g;
 	private _decorations: DecorationSet;
 	private decorationCache: DecorationCache;
 	private cachedDecorations: Map<string, Range<Decoration>> = new Map();
@@ -124,27 +124,18 @@ export class CompactMdAltPlugin implements PluginValue {
 		from: number,
 		to: number
 	): void {
-		syntaxTree(view.state).iterate({
-			from,
-			to,
-			enter: (node) => {
-				this.processNode(node, cursor, ranges, view);
-			},
-		});
-	}
+		const text = view.state.doc.sliceString(from, to);
+		const matches = text.matchAll(this.ALT_TEXT_PATTERN);
 
-	private processNode(
-		node: NodeInfo,
-		cursor: number,
-		ranges: Range<Decoration>[],
-		view: EditorView
-	): void {
-		if (!this.isMdLinkAltNode(node)) return;
+		for (const match of matches) {
+			if (!match.index) continue;
+			const start = from + match.index;
+			const end = start + match[0].length;
+			const altRange: AltRange = { start, end };
 
-		const altRange: AltRange = { start: node.from, end: node.to };
-		if (this.isCursorInRange(cursor, altRange)) return;
-
-		this.processAltDecoration(view, ranges, altRange);
+			if (this.isCursorInRange(cursor, altRange)) continue;
+			this.processAltDecoration(view, ranges, altRange);
+		}
 	}
 
 	private processAltDecoration(
@@ -207,14 +198,6 @@ export class CompactMdAltPlugin implements PluginValue {
 	private hasSelection(view: EditorView): boolean {
 		const { from, to } = view.state.selection.main;
 		return from !== to;
-	}
-
-	private isMdLinkAltNode(node: NodeInfo): boolean {
-		const isImage =
-			(node.type.name.includes("image_image-alt-text_link") ||
-				node.type.name.includes("image_image-alt-text_link_strong")) &&
-			!node.type.name.includes("formatting_formatting");
-		return isImage;
 	}
 
 	private isCursorInRange(cursor: number, range: AltRange): boolean {
