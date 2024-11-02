@@ -9,10 +9,11 @@ import {
 } from "@codemirror/view";
 import { CompactMdLinkWidget } from "../components/CompactMdLinkWidget";
 import { COMPACT_MD_LINK_ALT_DECORATION } from "../constants";
-import { CompactLinksSettings, NodeInfo } from "../types";
+import { CompactLinksSettings } from "../types";
+import { DecorationCache } from "../utils/DecorationCache";
 import { textTruncator } from "../utils/textTruncator";
 
-interface AltRange {
+export interface AltRange {
 	start: number;
 	end: number;
 }
@@ -25,30 +26,63 @@ interface DisplayProperties {
 export class CompactMdAltPlugin implements PluginValue {
 	private readonly ALT_TEXT_MAX_LENGTH = 30;
 	private _decorations: DecorationSet;
+	private decorationCache: DecorationCache;
 	private cachedDecorations: Map<string, Range<Decoration>> = new Map();
+	private _cachedAltRanges: Map<number, AltRange> = new Map();
 
 	constructor(
 		private readonly settings: CompactLinksSettings,
 		private readonly view: EditorView
 	) {
+		this.decorationCache = new DecorationCache();
 		this._decorations = this.buildDecorations(view);
 	}
 
 	update(update: ViewUpdate): void {
 		if (update.docChanged || update.selectionSet) {
-			this.cachedDecorations.clear();
+			this.decorationCache.clear();
+			this._cachedAltRanges.clear();
 			this._decorations = this.buildDecorations(update.view);
 		} else if (update.viewportChanged) {
-			this._decorations = this.buildDecorations(update.view);
+			this._decorations = this.updateDecorationsForViewport(update.view);
 		}
 	}
 
-	destroy(): void {
-		this.cachedDecorations.clear();
+	private updateDecorationsForViewport(view: EditorView): DecorationSet {
+		if (!this.isDecorationEnabled(view)) {
+			return Decoration.none;
+		}
+
+		const ranges: Range<Decoration>[] = [];
+		const cursor = view.state.selection.main.head;
+		const visibleRanges = new Set<number>();
+
+		// process visible ranges
+		view.visibleRanges.forEach(({ from, to }) => {
+			this.processVisibleRange(view, ranges, cursor, from, to);
+			for (let pos = from; pos <= to; pos++) {
+				visibleRanges.add(pos);
+			}
+		});
+
+		// delete cached alt ranges that are not visible
+		for (const [pos] of this._cachedAltRanges) {
+			if (!visibleRanges.has(pos)) {
+				this._cachedAltRanges.delete(pos);
+				this.decorationCache.deleteByPosition(pos);
+			}
+		}
+
+		return Decoration.set(ranges, true);
 	}
 
-	public get decorations(): DecorationSet {
+	get decorations(): DecorationSet {
 		return this._decorations;
+	}
+
+	destroy(): void {
+		this.decorationCache.clear();
+		this._cachedAltRanges.clear();
 	}
 
 	private buildDecorations(view: EditorView): DecorationSet {
