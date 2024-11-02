@@ -26,6 +26,7 @@ export interface DisplayProperties {
 export class CompactMdUrlPlugin implements PluginValue {
 	private _decorations: DecorationSet;
 	private decorationCache: DecorationCache;
+	private _cachedUrlRanges: Map<number, UrlRange> = new Map();
 
 	constructor(
 		private readonly settings: CompactLinksSettings,
@@ -40,14 +41,48 @@ export class CompactMdUrlPlugin implements PluginValue {
 	}
 
 	update(update: ViewUpdate): void {
-		if (this.shouldInvalidateCache(update)) {
+		if (update.docChanged || update.selectionSet) {
+			// ドキュメント変更や選択変更時は完全にキャッシュをクリア
 			this.decorationCache.clear();
+			this._cachedUrlRanges.clear();
 			this._decorations = this.buildDecorations(update.view);
+		} else if (update.viewportChanged) {
+			// ViewPort変更時は表示範囲外のデコレーションのみを削除
+			this._decorations = this.updateDecorationsForViewport(update.view);
 		}
+	}
+
+	private updateDecorationsForViewport(view: EditorView): DecorationSet {
+		if (!this.isDecorationEnabled(view)) {
+			return Decoration.none;
+		}
+
+		const ranges: Range<Decoration>[] = [];
+		const cursor = view.state.selection.main.head;
+		const visibleRanges = new Set<number>();
+
+		// process visible ranges
+		view.visibleRanges.forEach(({ from, to }) => {
+			this.processVisibleRange(view, ranges, cursor, from, to);
+			for (let pos = from; pos <= to; pos++) {
+				visibleRanges.add(pos);
+			}
+		});
+
+		// delete cached decorations that are not in the visible range
+		for (const [pos] of this._cachedUrlRanges) {
+			if (!visibleRanges.has(pos)) {
+				this._cachedUrlRanges.delete(pos);
+				this.decorationCache.deleteByPosition(pos);
+			}
+		}
+
+		return Decoration.set(ranges, true);
 	}
 
 	destroy(): void {
 		this.decorationCache.clear();
+		this._cachedUrlRanges.clear();
 	}
 
 	get decorations(): DecorationSet {
@@ -96,7 +131,9 @@ export class CompactMdUrlPlugin implements PluginValue {
 		syntaxTree(view.state).iterate({
 			from,
 			to,
-			enter: (node) => this.processNode(node, cursor, ranges, view),
+			enter: (node) => {
+				this.processNode(node, cursor, ranges, view);
+			},
 		});
 	}
 
@@ -108,7 +145,16 @@ export class CompactMdUrlPlugin implements PluginValue {
 	): void {
 		if (!this.isUrlNode(node)) return;
 
-		const urlRange: UrlRange = { start: node.from, end: node.to };
+		const cachedUrlRange = this._cachedUrlRanges.get(node.from);
+		let urlRange: UrlRange;
+
+		if (cachedUrlRange) {
+			urlRange = cachedUrlRange;
+		} else {
+			urlRange = { start: node.from, end: node.to };
+			this._cachedUrlRanges.set(node.from, urlRange);
+		}
+
 		if (this.isCursorInRange(cursor, urlRange)) return;
 		this.processUrlDecoration(view, ranges, urlRange);
 	}
@@ -222,11 +268,5 @@ export class CompactMdUrlPlugin implements PluginValue {
 			displayText: COMPACT_MD_LINK_DECORATION.hidden.defaultText,
 			className: COMPACT_MD_LINK_DECORATION.hidden.className,
 		};
-	}
-
-	private shouldInvalidateCache(update: ViewUpdate): boolean {
-		return (
-			update.docChanged || update.selectionSet || update.viewportChanged
-		);
 	}
 }

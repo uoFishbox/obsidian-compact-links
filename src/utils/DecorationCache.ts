@@ -2,29 +2,43 @@ import { Range } from "@codemirror/state";
 import { Decoration } from "@codemirror/view";
 
 export class DecorationCache {
-	private decorations = new Map<string, Range<Decoration>>();
+	private cache: Map<string, Range<Decoration>> = new Map();
+	private positionToKey: Map<number, Set<string>> = new Map();
 	private maxSize = 1000; // キャッシュサイズの制限
 
 	public get(key: string): Range<Decoration> | undefined {
-		return this.decorations.get(key);
+		return this.cache.get(key);
 	}
 
 	public set(key: string, decoration: Range<Decoration>): void {
-		if (this.decorations.size >= this.maxSize) {
+		if (this.cache.size >= this.maxSize) {
 			// LRU-like cache
-			const firstKey = this.decorations.keys().next().value;
+			const firstKey = this.cache.keys().next().value;
 			if (firstKey !== undefined) {
-				this.decorations.delete(firstKey);
+				this.cache.delete(firstKey);
 			}
 		}
-		this.decorations.set(key, decoration);
+		this.cache.set(key, decoration);
+		const position = decoration.from;
+		if (!this.positionToKey.has(position)) {
+			this.positionToKey.set(position, new Set());
+		}
+		this.positionToKey.get(position)?.add(key);
 	}
 
 	public clear(): void {
-		this.decorations.clear();
+		this.cache.clear();
 	}
 
 	public generateKey(from: number, to: number): string {
 		return `${from}-${to}`;
+	}
+
+	public deleteByPosition(position: number): void {
+		const keys = this.positionToKey.get(position);
+		if (keys) {
+			keys.forEach((key) => this.cache.delete(key));
+			this.positionToKey.delete(position);
+		}
 	}
 }

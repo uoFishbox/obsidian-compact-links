@@ -20,20 +20,24 @@ export class CompactAliasPlugin implements PluginValue {
 	private _decorations: DecorationSet;
 	private decorationCache: DecorationCache;
 	private _cachedAliasRanges: Map<number, AliasDecorationRange> = new Map();
+	private visibilityManager: VisibilityManager;
 
 	constructor(
 		private readonly settings: CompactLinksSettings,
 		view: EditorView
 	) {
 		this.decorationCache = new DecorationCache();
+		this.visibilityManager = new VisibilityManager();
 		this._decorations = this.buildDecorations(view);
 	}
 
 	update(update: ViewUpdate): void {
-		if (this.shouldInvalidateCache(update)) {
+		if (update.docChanged || update.selectionSet) {
 			this.decorationCache.clear();
 			this._cachedAliasRanges.clear();
 			this._decorations = this.buildDecorations(update.view);
+		} else if (update.viewportChanged) {
+			this._decorations = this.updateDecorationsForViewport(update.view);
 		}
 	}
 
@@ -47,69 +51,120 @@ export class CompactAliasPlugin implements PluginValue {
 	}
 
 	private buildDecorations(view: EditorView): DecorationSet {
-		if (!this.shouldProcessDecorations(view)) {
+		if (!this.isDecorationProcessingAllowed(view)) {
 			return Decoration.set([]);
 		}
-
-		return this.processVisibleRanges(view);
+		return this.createDecorationsForVisibleRanges(view);
 	}
 
-	private shouldProcessDecorations(view: EditorView): boolean {
-		const hasSelection = this.hasSelection(view);
+	private isDecorationProcessingAllowed(view: EditorView): boolean {
+		const hasSelection = this.hasActiveSelection(view);
 		return !(
 			(hasSelection && this.settings.disableWhenSelected) ||
 			!this.settings.compactAliasedLinks.enable
 		);
 	}
 
-	private hasSelection(view: EditorView): boolean {
+	private hasActiveSelection(view: EditorView): boolean {
 		const { from, to } = view.state.selection.main;
 		return from !== to;
 	}
 
-	private processVisibleRanges(view: EditorView): DecorationSet {
-		const ranges: Range<Decoration>[] = [];
-		const cursor = view.state.selection.main.head;
+	private createDecorationsForVisibleRanges(view: EditorView): DecorationSet {
+		const decorationBuilder = new DecorationBuilder(
+			this.decorationCache,
+			this._cachedAliasRanges
+		);
 
-		for (const { from, to } of view.visibleRanges) {
-			syntaxTree(view.state).iterate({
-				from,
-				to,
-				enter: (node) =>
-					this.processNode(node as NodeInfo, cursor, ranges),
-			});
+		const cursor = view.state.selection.main.head;
+		const ranges: Range<Decoration>[] = [];
+
+		for (const visibleRange of view.visibleRanges) {
+			this.processVisibleRange(
+				view,
+				visibleRange,
+				cursor,
+				ranges,
+				decorationBuilder
+			);
 		}
 
 		return Decoration.set(ranges, false);
 	}
 
-	private processNode(
+	private processVisibleRange(
+		view: EditorView,
+		visibleRange: { from: number; to: number },
+		cursor: number,
+		ranges: Range<Decoration>[],
+		decorationBuilder: DecorationBuilder
+	): void {
+		syntaxTree(view.state).iterate({
+			from: visibleRange.from,
+			to: visibleRange.to,
+			enter: (node) =>
+				decorationBuilder.processNode(node as NodeInfo, cursor, ranges),
+		});
+	}
+
+	private updateDecorationsForViewport(view: EditorView): DecorationSet {
+		if (!this.isDecorationProcessingAllowed(view)) {
+			return Decoration.set([]);
+		}
+
+		const visibilityTracker = this.visibilityManager.trackVisibleRanges(
+			view.visibleRanges
+		);
+		const ranges = this.createDecorationsForVisibleRanges(view);
+		this.cleanupInvisibleCache(visibilityTracker);
+
+		return ranges;
+	}
+
+	private cleanupInvisibleCache(visibilityTracker: Set<number>): void {
+		for (const [pos] of this._cachedAliasRanges) {
+			if (!visibilityTracker.has(pos)) {
+				this._cachedAliasRanges.delete(pos);
+				this.decorationCache.deleteByPosition(pos);
+			}
+		}
+	}
+}
+
+class DecorationBuilder {
+	constructor(
+		private decorationCache: DecorationCache,
+		private cachedAliasRanges: Map<number, AliasDecorationRange>
+	) {}
+
+	processNode(
 		node: NodeInfo,
 		cursor: number,
 		ranges: Range<Decoration>[]
 	): void {
 		if (!this.isLinkStartNode(node)) return;
 
-		// check if the alias is in the visible range
-		const cachedAliasRange = this._cachedAliasRanges.get(node.from);
-		let aliasRange: AliasDecorationRange | null;
-
-		if (cachedAliasRange) {
-			aliasRange = cachedAliasRange;
-		} else {
-			aliasRange = this.findAliasRange(node);
-			if (aliasRange) {
-				this._cachedAliasRanges.set(node.from, aliasRange);
-			}
-		}
-
+		const aliasRange = this.getOrCreateAliasRange(node);
 		if (aliasRange && !this.isCursorInRange(cursor, aliasRange)) {
-			this.addAliasDecoration(ranges, aliasRange);
+			this.createDecoration(ranges, aliasRange);
 		}
 	}
 
 	private isLinkStartNode(node: NodeInfo): boolean {
 		return node.type.name.includes("formatting-link-start");
+	}
+
+	private getOrCreateAliasRange(node: NodeInfo): AliasDecorationRange | null {
+		const cachedAliasRange = this.cachedAliasRanges.get(node.from);
+		if (cachedAliasRange) {
+			return cachedAliasRange;
+		}
+
+		const aliasRange = this.findAliasRange(node);
+		if (aliasRange) {
+			this.cachedAliasRanges.set(node.from, aliasRange);
+		}
+		return aliasRange;
 	}
 
 	private findAliasRange(node: NodeInfo): AliasDecorationRange | null {
@@ -136,7 +191,7 @@ export class CompactAliasPlugin implements PluginValue {
 		return cursor >= range.startPos && cursor <= range.pipePos;
 	}
 
-	private addAliasDecoration(
+	private createDecoration(
 		ranges: Range<Decoration>[],
 		range: AliasDecorationRange
 	): void {
@@ -161,10 +216,18 @@ export class CompactAliasPlugin implements PluginValue {
 		this.decorationCache.set(cacheKey, decoration);
 		ranges.push(decoration);
 	}
+}
 
-	private shouldInvalidateCache(update: ViewUpdate): boolean {
-		return (
-			update.docChanged || update.selectionSet || update.viewportChanged
-		);
+class VisibilityManager {
+	trackVisibleRanges(
+		visibleRanges: readonly { from: number; to: number }[]
+	): Set<number> {
+		const visiblePositions = new Set<number>();
+		for (const { from, to } of visibleRanges) {
+			for (let pos = from; pos <= to; pos++) {
+				visiblePositions.add(pos);
+			}
+		}
+		return visiblePositions;
 	}
 }
