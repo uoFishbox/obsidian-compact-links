@@ -8,7 +8,7 @@ import {
 } from "obsidian";
 
 import { Compartment, Extension } from "@codemirror/state";
-import { EditorView, ViewPlugin } from "@codemirror/view";
+import { ViewPlugin } from "@codemirror/view";
 import { createCompactAliasPlugin } from "./factories/createCompactAliasLinkPlugin";
 import { createCompactMdAltPlugin } from "./factories/createCompactMdAltPlugin";
 import { createCompactMdUrlPlugin } from "./factories/createCompactMdUrlPlugin";
@@ -16,7 +16,7 @@ import { createCompactMdUrlPlugin } from "./factories/createCompactMdUrlPlugin";
 import { CompactAliasPlugin } from "./cmplugins/CompactAliasPlugin";
 import { CompactMdAltPlugin } from "./cmplugins/CompactMdAltPlugin";
 import { CompactMdUrlPlugin } from "./cmplugins/CompactMdUrlPlugin";
-import { CompactLinksSettings, UrlDisplayMode } from "./types";
+import { AltDisplayMode, CompactLinksSettings, UrlDisplayMode } from "./types";
 
 const DEFAULT_SETTINGS: CompactLinksSettings = {
 	disableInSourceMode: false,
@@ -31,6 +31,7 @@ const DEFAULT_SETTINGS: CompactLinksSettings = {
 		CompactMdLinkAltSettings: {
 			enable: true,
 			displayMode: "truncated",
+			displayLength: 20,
 		},
 	},
 };
@@ -49,13 +50,13 @@ export default class CompactLinksPlugin extends Plugin {
 		this.initializeExtensions();
 	}
 
-	private initializeExtensions(): void {
+	initializeExtensions(): void {
 		this.aliasLinkExt = createCompactAliasPlugin(this.settings);
 		this.mdLinkUrlExt = createCompactMdUrlPlugin(this.settings);
 		this.mdLinkAltExt = createCompactMdAltPlugin(this.settings);
 	}
 
-	private getExtensions(): Extension[] {
+	getExtensions(): Extension[] {
 		const extensions: Extension[] = [];
 		if (this.settings.compactAliasedLinks.enable) {
 			extensions.push(this.aliasLinkExt);
@@ -73,6 +74,11 @@ export default class CompactLinksPlugin extends Plugin {
 		return extensions;
 	}
 
+	getNewExtensions(): Extension {
+		this.initializeExtensions();
+		return this.getExtensions();
+	}
+
 	async onload() {
 		await this.loadSettings();
 		this.addSettingTab(new CompactLinksSettingTab(this.app, this));
@@ -80,18 +86,6 @@ export default class CompactLinksPlugin extends Plugin {
 		// wrap the extension in a compartment
 		const extension = this.extensionCompartment.of(this.getExtensions());
 		this.registerEditorExtension(extension);
-
-		this.addCommand({
-			id: "test",
-			name: "test command",
-			editorCallback: (editor, view) => {
-				if (!view.editor) return;
-				const editorView = view.editor.cm as EditorView;
-
-				const plugin = editorView.plugin(this.aliasLinkExt);
-				console.log(plugin);
-			},
-		});
 
 		// detect layout change
 		this.registerEvent(
@@ -123,15 +117,30 @@ export default class CompactLinksPlugin extends Plugin {
 
 	onunload() {}
 
-	updateExtension(): void {
-		const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
-		if (activeView) {
-			const cm = activeView.editor.cm;
-			cm.dispatch({
-				effects: this.extensionCompartment.reconfigure(
-					this.getExtensions()
-				),
-			});
+	refreshAllPluginsView(): void {
+		// Get all markdown views
+		const markdownViews = this.app.workspace.getLeavesOfType("markdown");
+
+		for (const leaf of markdownViews) {
+			const view = leaf.view as MarkdownView;
+			if (view && view.editor && view.editor.cm) {
+				const isSourceMode = view.getState().source as boolean;
+				const cm = view.editor.cm;
+
+				if (this.settings.disableInSourceMode && isSourceMode) {
+					// disable the extension
+					cm.dispatch({
+						effects: this.extensionCompartment.reconfigure([]),
+					});
+				} else {
+					// enable the extension
+					cm.dispatch({
+						effects: this.extensionCompartment.reconfigure(
+							this.getNewExtensions()
+						),
+					});
+				}
+			}
 		}
 	}
 
@@ -171,7 +180,7 @@ class CompactLinksSettingTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						this.plugin.settings.disableInSourceMode = value;
 						await this.plugin.saveSettings();
-						this.plugin.updateExtension();
+						this.plugin.refreshAllPluginsView();
 					})
 			);
 
@@ -183,7 +192,7 @@ class CompactLinksSettingTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						this.plugin.settings.disableWhenSelected = value;
 						await this.plugin.saveSettings();
-						this.plugin.updateExtension();
+						this.plugin.refreshAllPluginsView();
 					})
 			);
 
@@ -195,7 +204,7 @@ class CompactLinksSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.compactAliasedLinks.enable = value;
 					await this.plugin.saveSettings();
-					this.plugin.updateExtension();
+					this.plugin.refreshAllPluginsView();
 				})
 		);
 
@@ -210,7 +219,7 @@ class CompactLinksSettingTab extends PluginSettingTab {
 					this.plugin.settings.compactMarkdownLinks.enableTooltip =
 						value;
 					await this.plugin.saveSettings();
-					this.plugin.updateExtension();
+					this.plugin.refreshAllPluginsView();
 				})
 		);
 
@@ -226,7 +235,7 @@ class CompactLinksSettingTab extends PluginSettingTab {
 					this.plugin.settings.compactMarkdownLinks.CompactMdLinkAltSettings.enable =
 						value;
 					await this.plugin.saveSettings();
-					this.plugin.updateExtension();
+					this.plugin.refreshAllPluginsView();
 					this.display();
 				})
 		);
@@ -243,7 +252,7 @@ class CompactLinksSettingTab extends PluginSettingTab {
 					this.plugin.settings.compactMarkdownLinks.CompactMdLinkUrlSettings.enable =
 						value;
 					await this.plugin.saveSettings();
-					this.plugin.updateExtension();
+					this.plugin.refreshAllPluginsView();
 					this.display();
 				})
 		);
@@ -279,7 +288,7 @@ class CompactLinksSettingTab extends PluginSettingTab {
 							this.plugin.settings.compactMarkdownLinks.CompactMdLinkUrlSettings.displayMode =
 								value as UrlDisplayMode;
 							await this.plugin.saveSettings();
-							this.plugin.updateExtension();
+							this.plugin.refreshAllPluginsView();
 							this.display();
 						})
 				);
