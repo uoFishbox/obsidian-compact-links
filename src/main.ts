@@ -16,7 +16,7 @@ import { createCompactMdUrlPlugin } from "./factories/createCompactMdUrlPlugin";
 import { CompactAliasPlugin } from "./cmplugins/CompactAliasPlugin";
 import { CompactMdAltPlugin } from "./cmplugins/CompactMdAltPlugin";
 import { CompactMdUrlPlugin } from "./cmplugins/CompactMdUrlPlugin";
-import { AltDisplayMode, CompactLinksSettings, UrlDisplayMode } from "./types";
+import { CompactLinksSettings, UrlDisplayMode } from "./types";
 
 const DEFAULT_SETTINGS: CompactLinksSettings = {
 	disableInSourceMode: false,
@@ -30,7 +30,6 @@ const DEFAULT_SETTINGS: CompactLinksSettings = {
 		},
 		CompactMdLinkAltSettings: {
 			enable: true,
-			displayMode: "truncated",
 			displayLength: 20,
 		},
 	},
@@ -246,27 +245,6 @@ class CompactLinksSettingTab extends PluginSettingTab {
 			this.plugin.settings.compactMarkdownLinks.CompactMdLinkAltSettings
 				.enable
 		) {
-			new Setting(containerEl)
-				.setName("Display mode")
-				.addDropdown((dropdown) =>
-					dropdown
-						.addOptions({
-							truncated: "Truncated",
-							custom: "Custom",
-						})
-						.setValue(
-							this.plugin.settings.compactMarkdownLinks
-								.CompactMdLinkAltSettings.displayMode
-						)
-						.onChange(async (value) => {
-							this.plugin.settings.compactMarkdownLinks.CompactMdLinkAltSettings.displayMode =
-								value as AltDisplayMode;
-							await this.plugin.saveSettings();
-							this.plugin.refreshAllPluginsView();
-							this.display();
-						})
-				);
-
 			new Setting(containerEl)
 				.setName("Display length")
 				.setDesc(

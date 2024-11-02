@@ -14,12 +14,10 @@ interface CompactMdLinkUrlSettings {
 
 interface CompactMdLinkAltSettings {
 	enable: boolean;
-	displayMode: AltDisplayMode;
 	displayLength: number;
 }
 
 export type UrlDisplayMode = "hidden" | "domain" | "custom";
-export type AltDisplayMode = "truncated" | "custom";
 
 export interface CompactLinksSettings {
 	disableInSourceMode: boolean;
