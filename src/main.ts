@@ -210,18 +210,20 @@ class CompactLinksSettingTab extends PluginSettingTab {
 
 		containerEl.createEl("h2", { text: "Compact Markdown Links" });
 
-		new Setting(containerEl).setName("Show tooltip").addToggle((toggle) =>
-			toggle
-				.setValue(
-					this.plugin.settings.compactMarkdownLinks.enableTooltip
-				)
-				.onChange(async (value) => {
-					this.plugin.settings.compactMarkdownLinks.enableTooltip =
-						value;
-					await this.plugin.saveSettings();
-					this.plugin.refreshAllPluginsView();
-				})
-		);
+		new Setting(containerEl)
+			.setName("Display full text in tooltip on hover")
+			.addToggle((toggle) =>
+				toggle
+					.setValue(
+						this.plugin.settings.compactMarkdownLinks.enableTooltip
+					)
+					.onChange(async (value) => {
+						this.plugin.settings.compactMarkdownLinks.enableTooltip =
+							value;
+						await this.plugin.saveSettings();
+						this.plugin.refreshAllPluginsView();
+					})
+			);
 
 		containerEl.createEl("p", { text: "Alt text shortening" });
 
@@ -240,6 +242,52 @@ class CompactLinksSettingTab extends PluginSettingTab {
 				})
 		);
 
+		if (
+			this.plugin.settings.compactMarkdownLinks.CompactMdLinkAltSettings
+				.enable
+		) {
+			new Setting(containerEl)
+				.setName("Display mode")
+				.addDropdown((dropdown) =>
+					dropdown
+						.addOptions({
+							truncated: "Truncated",
+							custom: "Custom",
+						})
+						.setValue(
+							this.plugin.settings.compactMarkdownLinks
+								.CompactMdLinkAltSettings.displayMode
+						)
+						.onChange(async (value) => {
+							this.plugin.settings.compactMarkdownLinks.CompactMdLinkAltSettings.displayMode =
+								value as AltDisplayMode;
+							await this.plugin.saveSettings();
+							this.plugin.refreshAllPluginsView();
+							this.display();
+						})
+				);
+
+			new Setting(containerEl)
+				.setName("Display length")
+				.setDesc(
+					"Number of characters to display. CJK characters are treated as two characters."
+				)
+				.addText((text) =>
+					text
+						.setPlaceholder("20")
+						.setValue(
+							this.plugin.settings.compactMarkdownLinks.CompactMdLinkAltSettings.displayLength.toString()
+						)
+						.onChange(async (value) => {
+							const length = parseInt(value);
+							if (isNaN(length) || length < 1) return;
+							this.plugin.settings.compactMarkdownLinks.CompactMdLinkAltSettings.displayLength =
+								length;
+							await this.plugin.saveSettings();
+							this.plugin.refreshAllPluginsView();
+						})
+				);
+		}
 		containerEl.createEl("p", { text: "URL shortening" });
 
 		new Setting(containerEl).setName("Enable").addToggle((toggle) =>

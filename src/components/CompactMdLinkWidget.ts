@@ -21,15 +21,11 @@ export class CompactMdLinkWidget extends WidgetType {
 
 		if (this.url !== "" && this.enableTooltip) {
 			const tooltipText = this.url;
-			const shortTooltipText =
-				tooltipText.length > 50
-					? tooltipText.slice(0, 50) + "..."
-					: tooltipText;
 			const options: TooltipOptions = {
-				placement: "top",
+				// placement: "top",
 				delay: 400,
 			};
-			setTooltip(span, shortTooltipText, options);
+			setTooltip(span, tooltipText, options);
 		}
 
 		return span;
