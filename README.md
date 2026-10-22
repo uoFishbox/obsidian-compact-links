@@ -34,3 +34,39 @@ Hidden mode:
 -   Normal view (domain mode): `[GitHub](github.com)`
 -   Normal view (hidden mode): `[GitHub](...)`
 -   When cursor is at URL: `[GitHub](https://github.com/username/repository)`
+
+### Compact Image Alt Text
+
+Long image descriptions such as `![A very long description](image.png)` are
+shortened to the configured display length. CJK characters count as two; other
+Unicode code points count as one. Place a cursor in the description or click its
+shortened text to edit the full description. Short descriptions remain editable
+without a replacement widget.
+
+## Development
+
+Use Node.js 20 or later:
+
+```sh
+npm ci
+npm test
+npm run lint
+npm run build
+```
+
+`npm run dev` watches the source and rebuilds the plugin for local development.
+
+The source has three responsibilities:
+
+- `src/main.ts` registers the editor extension and applies settings to open views.
+- `src/settings.ts` validates persisted settings and supplies independent defaults;
+  `src/settingsTab.ts` renders the settings UI.
+- `src/cmplugins/CompactLinksPlugin.ts` builds all link decorations in one view
+  plugin. It rebuilds visible decorations after document, selection, viewport,
+  or syntax tree changes. Widgets compare their content and positions so
+  CodeMirror can reuse their DOM without a separate decoration cache.
+
+Tests use real CodeMirror states and Lezer trees with Obsidian token names. The
+Obsidian host and DOM are stubbed, so also verify in Obsidian: alias and URL
+expansion at cursor boundaries, image alt text after editing and scrolling,
+tooltip/click behavior, and source/live preview switching in multiple panes.

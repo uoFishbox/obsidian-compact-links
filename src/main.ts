@@ -1,317 +1,45 @@
-import {
-	App,
-	MarkdownView,
-	Plugin,
-	PluginManifest,
-	PluginSettingTab,
-	Setting,
-} from "obsidian";
-
+import { MarkdownView, Plugin } from "obsidian";
 import { Compartment, Extension } from "@codemirror/state";
-import { ViewPlugin } from "@codemirror/view";
-import { createCompactAliasPlugin } from "./factories/createCompactAliasLinkPlugin";
-import { createCompactMdAltPlugin } from "./factories/createCompactMdAltPlugin";
-import { createCompactMdUrlPlugin } from "./factories/createCompactMdUrlPlugin";
-
-import { CompactAliasPlugin } from "./cmplugins/CompactAliasPlugin";
-import { CompactMdAltPlugin } from "./cmplugins/CompactMdAltPlugin";
-import { CompactMdUrlPlugin } from "./cmplugins/CompactMdUrlPlugin";
-
-import { CompactLinksSettings, UrlDisplayMode } from "./types";
-
-const DEFAULT_SETTINGS: CompactLinksSettings = {
-	disableInSourceMode: false,
-	disableWhenSelected: false,
-	compactAliasedLinks: { enable: true },
-	compactMarkdownLinks: {
-		enableTooltip: true,
-		CompactMdLinkUrlSettings: {
-			enable: true,
-			displayMode: "domain",
-		},
-		CompactMdLinkAltSettings: {
-			enable: true,
-			displayLength: 20,
-		},
-	},
-};
+import { createCompactLinksExtension } from "./cmplugins/CompactLinksPlugin";
+import { CompactLinksSettingTab } from "./settingsTab";
+import { loadSettings } from "./settings";
 
 export default class CompactLinksPlugin extends Plugin {
-	settings: CompactLinksSettings = DEFAULT_SETTINGS;
-	private extensionCompartment = new Compartment();
-	private aliasLinkExt!: ViewPlugin<CompactAliasPlugin>;
-	private mdLinkUrlExt!: ViewPlugin<CompactMdUrlPlugin>;
-	private mdLinkAltExt!: ViewPlugin<CompactMdAltPlugin>;
+	settings = loadSettings();
+	private readonly extensionCompartment = new Compartment();
+	private extension: Extension = [];
+	private readonly disabledExtension: Extension = [];
 
-	constructor(app: App, manifest: PluginManifest) {
-		super(app, manifest);
-		this.settings = DEFAULT_SETTINGS;
-		this.extensionCompartment = new Compartment();
-	}
-
-	initializeExtensions(): void {
-		this.aliasLinkExt = createCompactAliasPlugin(this.settings);
-		this.mdLinkUrlExt = createCompactMdUrlPlugin(this.settings);
-		this.mdLinkAltExt = createCompactMdAltPlugin(this.settings);
-	}
-
-	getExtensions(): Extension[] {
-		const extensions: Extension[] = [];
-		if (this.settings.compactAliasedLinks.enable) {
-			extensions.push(this.aliasLinkExt);
-		}
-		if (
-			this.settings.compactMarkdownLinks.CompactMdLinkUrlSettings.enable
-		) {
-			extensions.push(this.mdLinkUrlExt);
-		}
-		if (
-			this.settings.compactMarkdownLinks.CompactMdLinkAltSettings.enable
-		) {
-			extensions.push(this.mdLinkAltExt);
-		}
-
-		return extensions;
-	}
-
-	getNewExtensions(): Extension {
-		this.initializeExtensions();
-		return this.getExtensions();
-	}
-
-	async onload() {
-		await this.loadSettings();
-		this.initializeExtensions();
+	async onload(): Promise<void> {
+		this.settings = loadSettings(await this.loadData());
+		this.extension = createCompactLinksExtension(this.settings);
+		this.registerEditorExtension(this.extensionCompartment.of(this.extension));
 		this.addSettingTab(new CompactLinksSettingTab(this.app, this));
-
-		// wrap the extension in a compartment
-		const extension = this.extensionCompartment.of(this.getExtensions());
-		this.registerEditorExtension(extension);
-
-		// detect layout change
-		this.registerEvent(
-			this.app.workspace.on("layout-change", () => {
-				const activeView =
-					this.app.workspace.getActiveViewOfType(MarkdownView);
-				const cm = activeView?.editor?.cm;
-				if (!activeView || !cm) return;
-
-				const isSourceMode = activeView.getState().source as boolean;
-				cm.dispatch({
-					effects: this.extensionCompartment.reconfigure(
-						this.settings.disableInSourceMode && isSourceMode
-							? []
-							: this.getExtensions()
-					),
-				});
-			})
-		);
+		this.registerEvent(this.app.workspace.on("layout-change", () => this.refreshEditors()));
+		this.app.workspace.onLayoutReady(() => this.refreshEditors());
 	}
 
-	onunload() {}
-
-	refreshAllPluginsView(): void {
-		// Get all markdown views
-		const markdownViews = this.app.workspace.getLeavesOfType("markdown");
-
-		for (const leaf of markdownViews) {
-			const view = leaf.view as MarkdownView;
-			if (view && view.editor && view.editor.cm) {
-				const isSourceMode = view.getState().source as boolean;
-				const cm = view.editor.cm;
-
-				if (this.settings.disableInSourceMode && isSourceMode) {
-					// disable the extension
-					cm.dispatch({
-						effects: this.extensionCompartment.reconfigure([]),
-					});
-				} else {
-					// enable the extension
-					cm.dispatch({
-						effects: this.extensionCompartment.reconfigure(
-							this.getNewExtensions()
-						),
-					});
-				}
-			}
-		}
-	}
-
-	async loadSettings() {
-		this.settings = Object.assign(
-			{},
-			DEFAULT_SETTINGS,
-			await this.loadData()
-		);
-	}
-
-	async saveSettings() {
+	async saveSettings(): Promise<void> {
 		await this.saveData(this.settings);
-	}
-}
-
-class CompactLinksSettingTab extends PluginSettingTab {
-	plugin: CompactLinksPlugin;
-
-	constructor(app: App, plugin: CompactLinksPlugin) {
-		super(app, plugin);
-		this.plugin = plugin;
+		// Create once per settings change, then share the definition across editors.
+		this.extension = createCompactLinksExtension(this.settings);
+		this.refreshEditors();
 	}
 
-	display(): void {
-		const { containerEl } = this;
+	private refreshEditors(): void {
+		for (const leaf of this.app.workspace.getLeavesOfType("markdown")) {
+			if (!(leaf.view instanceof MarkdownView)) continue;
+			const view = leaf.view;
+			const editor = view.editor?.cm;
+			if (!editor) continue;
 
-		containerEl.empty();
-
-		containerEl.createEl("h2", { text: "General" });
-
-		new Setting(containerEl)
-			.setName("Disable in source mode")
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.disableInSourceMode)
-					.onChange(async (value) => {
-						this.plugin.settings.disableInSourceMode = value;
-						await this.plugin.saveSettings();
-						this.plugin.refreshAllPluginsView();
-					})
-			);
-
-		new Setting(containerEl)
-			.setName("Disable while text is selected")
-			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.disableWhenSelected)
-					.onChange(async (value) => {
-						this.plugin.settings.disableWhenSelected = value;
-						await this.plugin.saveSettings();
-						this.plugin.refreshAllPluginsView();
-					})
-			);
-
-		containerEl.createEl("h2", { text: "Compact Aliased Internal Links" });
-
-		new Setting(containerEl).setName("Enable").addToggle((toggle) =>
-			toggle
-				.setValue(this.plugin.settings.compactAliasedLinks.enable)
-				.onChange(async (value) => {
-					this.plugin.settings.compactAliasedLinks.enable = value;
-					await this.plugin.saveSettings();
-					this.plugin.refreshAllPluginsView();
-				})
-		);
-
-		containerEl.createEl("h2", { text: "Compact Markdown Links" });
-
-		new Setting(containerEl)
-			.setName("Display full text in tooltip on hover")
-			.addToggle((toggle) =>
-				toggle
-					.setValue(
-						this.plugin.settings.compactMarkdownLinks.enableTooltip
-					)
-					.onChange(async (value) => {
-						this.plugin.settings.compactMarkdownLinks.enableTooltip =
-							value;
-						await this.plugin.saveSettings();
-						this.plugin.refreshAllPluginsView();
-					})
-			);
-
-		containerEl.createEl("p", { text: "Alt text shortening" });
-
-		new Setting(containerEl).setName("Enable").addToggle((toggle) =>
-			toggle
-				.setValue(
-					this.plugin.settings.compactMarkdownLinks
-						.CompactMdLinkAltSettings.enable
-				)
-				.onChange(async (value) => {
-					this.plugin.settings.compactMarkdownLinks.CompactMdLinkAltSettings.enable =
-						value;
-					await this.plugin.saveSettings();
-					this.plugin.refreshAllPluginsView();
-					this.display();
-				})
-		);
-
-		if (
-			this.plugin.settings.compactMarkdownLinks.CompactMdLinkAltSettings
-				.enable
-		) {
-			new Setting(containerEl)
-				.setName("Display length")
-				.setDesc(
-					"Number of characters to display. CJK characters are treated as two characters."
-				)
-				.addText((text) =>
-					text
-						.setPlaceholder("20")
-						.setValue(
-							this.plugin.settings.compactMarkdownLinks.CompactMdLinkAltSettings.displayLength.toString()
-						)
-						.onChange(async (value) => {
-							const length = parseInt(value);
-							if (isNaN(length) || length < 1) return;
-							this.plugin.settings.compactMarkdownLinks.CompactMdLinkAltSettings.displayLength =
-								length;
-							await this.plugin.saveSettings();
-							this.plugin.refreshAllPluginsView();
-						})
-				);
-		}
-		containerEl.createEl("p", { text: "URL shortening" });
-
-		new Setting(containerEl).setName("Enable").addToggle((toggle) =>
-			toggle
-				.setValue(
-					this.plugin.settings.compactMarkdownLinks
-						.CompactMdLinkUrlSettings.enable
-				)
-				.onChange(async (value) => {
-					this.plugin.settings.compactMarkdownLinks.CompactMdLinkUrlSettings.enable =
-						value;
-					await this.plugin.saveSettings();
-					this.plugin.refreshAllPluginsView();
-					this.display();
-				})
-		);
-
-		if (
-			this.plugin.settings.compactMarkdownLinks.CompactMdLinkUrlSettings
-				.enable
-		) {
-			let description = "";
-			if (
-				this.plugin.settings.compactMarkdownLinks
-					.CompactMdLinkUrlSettings.displayMode === "domain"
-			) {
-				description = "Display format: [Title](domain)";
-			} else {
-				description = "Display format: [Title](...)";
+			const extension = this.settings.disableInSourceMode && view.getState().source
+				? this.disabledExtension
+				: this.extension;
+			const current = this.extensionCompartment.get(editor.state);
+			if (current !== undefined && current !== extension) {
+				editor.dispatch({ effects: this.extensionCompartment.reconfigure(extension) });
 			}
-
-			new Setting(containerEl)
-				.setName("URL display format")
-				.setDesc(description)
-				.addDropdown((dropdown) =>
-					dropdown
-						.addOptions({
-							hidden: "Hidden",
-							domain: "Show domain",
-						})
-						.setValue(
-							this.plugin.settings.compactMarkdownLinks
-								.CompactMdLinkUrlSettings.displayMode
-						)
-						.onChange(async (value) => {
-							this.plugin.settings.compactMarkdownLinks.CompactMdLinkUrlSettings.displayMode =
-								value as UrlDisplayMode;
-							await this.plugin.saveSettings();
-							this.plugin.refreshAllPluginsView();
-							this.display();
-						})
-				);
 		}
 	}
 }

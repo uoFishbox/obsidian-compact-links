@@ -1,47 +1,41 @@
 import { EditorView, WidgetType } from "@codemirror/view";
-import { setTooltip, TooltipOptions } from "obsidian";
+import { setTooltip } from "obsidian";
+import { TextRange } from "../types";
 
 export class CompactMdLinkWidget extends WidgetType {
 	constructor(
-		private readonly url: string,
+		private readonly fullText: string,
 		private readonly displayText: string,
 		private readonly className: string,
-		private readonly view: EditorView,
-		private readonly urlRange: { start: number; end: number },
+		private readonly range: TextRange,
 		private readonly enableTooltip: boolean
 	) {
 		super();
 	}
 
-	toDOM(): HTMLElement {
-		const span = document.createElement("span");
+	eq(other: CompactMdLinkWidget): boolean {
+		return this.fullText === other.fullText &&
+			this.displayText === other.displayText &&
+			this.className === other.className &&
+			this.range.from === other.range.from &&
+			this.range.to === other.range.to &&
+			this.enableTooltip === other.enableTooltip;
+	}
+
+	toDOM(view: EditorView): HTMLElement {
+		const span = view.dom.ownerDocument.createElement("span");
 		span.className = this.className;
 		span.textContent = this.displayText;
-		span.addEventListener("click", this.handleClick.bind(this));
-
-		if (this.url !== "" && this.enableTooltip) {
-			const tooltipText = this.url;
-			const options: TooltipOptions = {
-				// placement: "top",
-				delay: 400,
-			};
-			setTooltip(span, tooltipText, options);
-		}
-
-		return span;
-	}
-
-	private handleClick(): void {
-		this.moveCursorToUrl();
-	}
-
-	private moveCursorToUrl(): void {
-		this.view.dispatch({
-			selection: {
-				anchor: this.urlRange.start,
-				head: this.urlRange.end,
-			},
-			scrollIntoView: false,
+		span.addEventListener("click", () => {
+			view.dispatch({
+				selection: { anchor: this.range.from, head: this.range.to },
+				scrollIntoView: false,
+			});
+			view.focus();
 		});
+		if (this.fullText && this.enableTooltip) {
+			setTooltip(span, this.fullText, { delay: 400 });
+		}
+		return span;
 	}
 }

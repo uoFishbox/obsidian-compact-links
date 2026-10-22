@@ -1,15 +1,5 @@
-.compact-url-hidden {
-    color: var(--text-faint);
-    font-size: 1em;
-    cursor: pointer;
-}
-
-.compact-url-domain {
-    color: var(--text-faint);
-    font-size: 1em;
-    cursor: pointer;
-}
-
+.compact-url-hidden,
+.compact-url-domain,
 .compact-url-scheme {
     color: var(--text-faint);
     font-size: 1em;
@@ -17,7 +7,6 @@
 }
 
 .compact-alt-truncated {
-    /* color: var(--text-faint); */
     color: var(--link-color);
     font-size: 1em;
     cursor: pointer;

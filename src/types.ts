@@ -1,29 +1,20 @@
-export interface CompactAliasLinksSettings {
-	enable: boolean;
-}
-export interface CompactMdLinkSettings {
-	enableTooltip: boolean;
-	CompactMdLinkUrlSettings: CompactMdLinkUrlSettings;
-	CompactMdLinkAltSettings: CompactMdLinkAltSettings;
-}
-
-interface CompactMdLinkUrlSettings {
-	enable: boolean;
-	displayMode: UrlDisplayMode;
-}
-
-interface CompactMdLinkAltSettings {
-	enable: boolean;
-	displayLength: number;
-}
-
-export type UrlDisplayMode = "hidden" | "domain" | "custom";
+export type UrlDisplayMode = "hidden" | "domain";
 
 export interface CompactLinksSettings {
 	disableInSourceMode: boolean;
 	disableWhenSelected: boolean;
-	compactAliasedLinks: CompactAliasLinksSettings;
-	compactMarkdownLinks: CompactMdLinkSettings;
+	compactAliasedLinks: { enable: boolean };
+	compactMarkdownLinks: {
+		enableTooltip: boolean;
+		CompactMdLinkUrlSettings: {
+			enable: boolean;
+			displayMode: UrlDisplayMode;
+		};
+		CompactMdLinkAltSettings: {
+			enable: boolean;
+			displayLength: number;
+		};
+	};
 }
 
 export interface ParsedUrl {
@@ -32,25 +23,7 @@ export interface ParsedUrl {
 	domain: string;
 }
 
-export interface AliasDecorationRange {
-	startPos: number;
-	pipePos: number;
-}
-
-export interface SyntaxNode {
+export interface TextRange {
 	from: number;
 	to: number;
-	type: { name: string };
-	nextSibling: SyntaxNode | null;
-	parent: SyntaxNode | null;
-}
-
-export interface NodeInfo {
-	type: { name: string };
-	from: number;
-	to: number;
-	node: {
-		nextSibling: SyntaxNode | null;
-		parent: SyntaxNode | null;
-	};
 }
