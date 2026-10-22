@@ -16,6 +16,7 @@ import { createCompactMdUrlPlugin } from "./factories/createCompactMdUrlPlugin";
 import { CompactAliasPlugin } from "./cmplugins/CompactAliasPlugin";
 import { CompactMdAltPlugin } from "./cmplugins/CompactMdAltPlugin";
 import { CompactMdUrlPlugin } from "./cmplugins/CompactMdUrlPlugin";
+
 import { CompactLinksSettings, UrlDisplayMode } from "./types";
 
 const DEFAULT_SETTINGS: CompactLinksSettings = {
@@ -46,7 +47,6 @@ export default class CompactLinksPlugin extends Plugin {
 		super(app, manifest);
 		this.settings = DEFAULT_SETTINGS;
 		this.extensionCompartment = new Compartment();
-		this.initializeExtensions();
 	}
 
 	initializeExtensions(): void {
@@ -70,6 +70,7 @@ export default class CompactLinksPlugin extends Plugin {
 		) {
 			extensions.push(this.mdLinkAltExt);
 		}
+
 		return extensions;
 	}
 
@@ -80,6 +81,7 @@ export default class CompactLinksPlugin extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
+		this.initializeExtensions();
 		this.addSettingTab(new CompactLinksSettingTab(this.app, this));
 
 		// wrap the extension in a compartment
@@ -88,28 +90,20 @@ export default class CompactLinksPlugin extends Plugin {
 
 		// detect layout change
 		this.registerEvent(
-			this.app.workspace.on("layout-change", async () => {
+			this.app.workspace.on("layout-change", () => {
 				const activeView =
 					this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (activeView) {
-					const isSourceMode = activeView.getState()
-						.source as boolean;
-					const cm = activeView.editor.cm;
+				const cm = activeView?.editor?.cm;
+				if (!activeView || !cm) return;
 
-					if (this.settings.disableInSourceMode && isSourceMode) {
-						// disable the extension
-						cm.dispatch({
-							effects: this.extensionCompartment.reconfigure([]),
-						});
-					} else {
-						// enable the extension
-						cm.dispatch({
-							effects: this.extensionCompartment.reconfigure(
-								this.getExtensions()
-							),
-						});
-					}
-				}
+				const isSourceMode = activeView.getState().source as boolean;
+				cm.dispatch({
+					effects: this.extensionCompartment.reconfigure(
+						this.settings.disableInSourceMode && isSourceMode
+							? []
+							: this.getExtensions()
+					),
+				});
 			})
 		);
 	}
