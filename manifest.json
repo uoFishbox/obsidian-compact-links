@@ -1,9 +1,10 @@
 {
-    "author": "uoFishbox",
-    "authorUrl": "https://github.com/uoFishbox/obsidian-compact-links",
-    "description": "Displays links in a compact format to reduce visual clutter during typing.",
-    "id": "compact-links",
-    "isDesktopOnly": false,
-    "name": "Compact Links",
-    "version": "1.1.4"
+	"author": "uoFishbox",
+	"authorUrl": "https://github.com/uoFishbox/obsidian-compact-links",
+	"description": "Displays links in a compact format to reduce visual clutter during typing.",
+	"id": "compact-links",
+	"isDesktopOnly": false,
+	"name": "Compact Links",
+	"minAppVersion": "1.4.4",
+	"version": "1.2.0"
 }
