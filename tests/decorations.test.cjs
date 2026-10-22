@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const { EditorState, EditorSelection } = require("@codemirror/state");
 const { Language, defineLanguageFacet } = require("@codemirror/language");
 const { Parser, NodeType, Tree } = require("@lezer/common");
-const { buildLinkDecorations, createCompactLinksExtension, loadSettings } = require("./runtime.cjs");
+const { buildLinkDecorations, createCompactLinksExtension, loadSettings, UrlParser } = require("./runtime.cjs");
 
 // Use real Lezer trees with Obsidian's token names; Obsidian's parser is host-provided.
 function stateWithTokens(doc, tokens = [], selection = EditorSelection.cursor(0)) {
@@ -122,5 +122,109 @@ test("view updates rebuild after scrolling and background syntax parsing", () =>
 	assert.equal(plugin.decorations.size, 0);
 	view.visibleRanges = [{ from: 0, to: state.doc.length }];
 	plugin.update({ state, startState: stateWithTokens(aliasDoc), view });
+	assert.equal(plugin.decorations.size, 1);
+});
+
+test("cursor movement reuses URL candidates, including one initially expanded at the cursor", (t) => {
+	const doc = " [Title](https://example.com/a)";
+	let state = stateWithTokens(doc, [["string_url", 9, doc.length - 1]], EditorSelection.cursor(10));
+	const settings = loadSettings({ compactMarkdownLinks: { CompactMdLinkAltSettings: { enable: false } } });
+	const parse = t.mock.method(UrlParser, "parse");
+	const slices = t.mock.method(EditorState.prototype, "sliceDoc");
+	const view = { state, visibleRanges: [{ from: 0, to: doc.length }] };
+	const plugin = createCompactLinksExtension(settings).create(view);
+	assert.equal(plugin.decorations.size, 0);
+	assert.equal(parse.mock.callCount(), 1);
+	const initialSlices = slices.mock.callCount();
+
+	for (const [head, expected] of [[0, 1], [9, 0], [doc.length - 1, 0], [doc.length, 1]]) {
+		const next = state.update({ selection: { anchor: head } }).state;
+		view.state = next;
+		plugin.update({ state: next, startState: state, view, selectionSet: true });
+		assert.equal(plugin.decorations.size, expected);
+		state = next;
+	}
+	assert.equal(parse.mock.callCount(), 1);
+	assert.equal(slices.mock.callCount(), initialSlices);
+});
+
+test("cached alias candidates respect secondary cursors and inclusive title boundaries", () => {
+	let state = stateWithTokens(aliasDoc, aliasTokens);
+	const view = { state, visibleRanges: [{ from: 0, to: state.doc.length }] };
+	const plugin = createCompactLinksExtension(loadSettings()).create(view);
+	for (const [head, expected] of [[3, 0], [7, 0], [12, 0], [15, 1]]) {
+		const next = state.update({ selection: EditorSelection.create([
+			EditorSelection.cursor(0), EditorSelection.cursor(head),
+		]) }).state;
+		view.state = next;
+		plugin.update({ state: next, startState: state, view, selectionSet: true });
+		assert.equal(plugin.decorations.size, expected);
+		state = next;
+	}
+});
+
+test("alt candidates spanning viewport edges are reused without rescanning long lines", (t) => {
+	const doc = " ![abcdefgh](image.png)" + "x".repeat(100000);
+	let state = stateWithTokens(doc);
+	const settings = loadSettings({ compactMarkdownLinks: { CompactMdLinkAltSettings: { displayLength: 3 } } });
+	const slices = t.mock.method(EditorState.prototype, "sliceDoc");
+	const view = { state, visibleRanges: [{ from: 5, to: 7 }, { from: 8, to: 10 }] };
+	const plugin = createCompactLinksExtension(settings).create(view);
+	assert.equal(plugin.decorations.size, 1);
+	const initialSlices = slices.mock.callCount();
+	assert.ok(initialSlices > 0);
+	for (const [head, expected] of [[3, 0], [11, 0], [0, 1]]) {
+		const next = state.update({ selection: { anchor: head } }).state;
+		view.state = next;
+		plugin.update({ state: next, startState: state, view, selectionSet: true });
+		assert.equal(plugin.decorations.size, expected);
+		state = next;
+	}
+	assert.equal(slices.mock.callCount(), initialSlices);
+});
+
+test("edits invalidate cached alt text and defer extraction while a secondary selection disables compaction", (t) => {
+	let state = stateWithTokens(" ![abcdefgh](image.png)");
+	const settings = loadSettings({ disableWhenSelected: true,
+		compactMarkdownLinks: { CompactMdLinkAltSettings: { displayLength: 3 } } });
+	const slices = t.mock.method(EditorState.prototype, "sliceDoc");
+	const view = { state, visibleRanges: [{ from: 0, to: state.doc.length }] };
+	const plugin = createCompactLinksExtension(settings).create(view);
+	function update(spec) {
+		const transaction = state.update(spec);
+		view.state = transaction.state;
+		plugin.update({ state: transaction.state, startState: state, view,
+			docChanged: transaction.docChanged, selectionSet: transaction.selection !== undefined });
+		state = transaction.state;
+	}
+	function displayText() {
+		return plugin.decorations.iter().value.spec.widget.displayText;
+	}
+	assert.equal(displayText(), "abc...");
+	update({ changes: { from: 3, to: 11, insert: "12345678" } });
+	assert.equal(displayText(), "123...");
+	update({ selection: EditorSelection.create([EditorSelection.cursor(0), EditorSelection.range(4, 6)]) });
+	assert.equal(plugin.decorations.size, 0);
+	const beforeEdit = slices.mock.callCount();
+	update({ changes: { from: 3, to: 11, insert: "zyxwvuts" } });
+	assert.equal(plugin.decorations.size, 0);
+	assert.equal(slices.mock.callCount(), beforeEdit);
+	update({ selection: { anchor: 0 } });
+	assert.equal(displayText(), "zyx...");
+});
+
+test("an initially disabled view waits until the selection clears to extract candidates", (t) => {
+	const state = stateWithTokens(" ![abcdefgh](image.png)", [], EditorSelection.range(4, 6));
+	const settings = loadSettings({ disableWhenSelected: true,
+		compactMarkdownLinks: { CompactMdLinkAltSettings: { displayLength: 3 } } });
+	const slices = t.mock.method(EditorState.prototype, "sliceDoc");
+	const view = { state, visibleRanges: [{ from: 0, to: state.doc.length }] };
+	const plugin = createCompactLinksExtension(settings).create(view);
+	assert.equal(plugin.decorations.size, 0);
+	assert.equal(slices.mock.callCount(), 0);
+	const next = state.update({ selection: { anchor: 0 } }).state;
+	view.state = next;
+	plugin.update({ state: next, startState: state, view, selectionSet: true });
+	assert.ok(slices.mock.callCount() > 0);
 	assert.equal(plugin.decorations.size, 1);
 });

@@ -1,7 +1,14 @@
 import { ParsedUrl } from "../types";
 
+const absoluteSchemePattern = /^[a-z][a-z0-9+.-]*:/i;
+
 export class UrlParser {
 	static parse(url: string): ParsedUrl {
+		// Relative paths cannot be parsed without a base URL. Avoid throwing for each one.
+		if (!absoluteSchemePattern.test(url) &&
+			!absoluteSchemePattern.test(url.replace(/[\t\r\n]/g, "").trim())) {
+			return this.createInvalidUrlResult();
+		}
 		const parsedScheme = this.parseScheme(url);
 		return this.validateAndCreateUrl(url, parsedScheme);
 	}

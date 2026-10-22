@@ -16,6 +16,24 @@ test("URL parsing keeps custom schemes, hides HTTP schemes, and rejects relative
 	assert.equal(UrlParser.parse("relative/path").isUrl, false);
 });
 
+test("relative paths are rejected without invoking the throwing URL constructor", (t) => {
+	const URLConstructor = t.mock.method(global, "URL");
+	for (const url of ["relative/path", "./image.png", "../note.md", "/note", "//example.com", "#heading", "?query=1", ""]) {
+		assert.equal(UrlParser.parse(url).isUrl, false, url);
+	}
+	assert.equal(URLConstructor.mock.callCount(), 0);
+});
+
+test("absolute URL validation still accepts extended schemes and whitespace and rejects malformed hosts", () => {
+	for (const url of ["git+ssh://example.com/path", "app.v2://open", "app2://open", "mailto:user@example.com",
+		" \thttps://example.com/path\r\n", "ht\ntps://example.com/path"]) {
+		assert.equal(UrlParser.parse(url).isUrl, true, url);
+	}
+	for (const url of ["https://", "https://[invalid", "https://example.com:invalid"]) {
+		assert.equal(UrlParser.parse(url).isUrl, false, url);
+	}
+});
+
 test("widget reuse checks text, positions, CSS, and tooltip settings", () => {
 	const create = (text = "full", range = { from: 2, to: 8 }, tooltip = true, css = "compact-url-domain") =>
 		new CompactMdLinkWidget(text, "short", css, range, tooltip);

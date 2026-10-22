@@ -19,19 +19,31 @@ export function createCompactLinksExtension(settings: CompactLinksSettings) {
 }
 
 class CompactLinksView {
-	decorations: DecorationSet;
+	decorations = Decoration.none;
+	private candidates: DecorationSet | null = null;
 
 	constructor(view: EditorView, private readonly settings: CompactLinksSettings) {
-		this.decorations = buildLinkDecorations(view.state, view.visibleRanges, settings);
+		this.refresh(view);
 	}
 
 	update(update: ViewUpdate): void {
-		if (update.docChanged || update.selectionSet || update.viewportChanged ||
+		if (update.docChanged || update.viewportChanged ||
 			syntaxTree(update.startState) !== syntaxTree(update.state)) {
-			this.decorations = buildLinkDecorations(
-				update.state, update.view.visibleRanges, this.settings
-			);
+			this.candidates = null;
+		} else if (!update.selectionSet) {
+			return;
 		}
+		this.refresh(update.view);
+	}
+
+	private refresh(view: EditorView): void {
+		if (selectionDisablesCompaction(view.state, this.settings)) {
+			this.decorations = Decoration.none;
+			return;
+		}
+		// Keep only the current viewport's candidates, independent of cursor positions.
+		this.candidates ??= collectLinkDecorations(view.state, view.visibleRanges, this.settings);
+		this.decorations = filterCursors(view.state, this.candidates);
 	}
 }
 
@@ -40,10 +52,17 @@ export function buildLinkDecorations(
 	visibleRanges: readonly TextRange[],
 	settings: CompactLinksSettings
 ): DecorationSet {
-	if (settings.disableWhenSelected && state.selection.ranges.some((range) => !range.empty)) {
+	if (selectionDisablesCompaction(state, settings)) {
 		return Decoration.none;
 	}
+	return filterCursors(state, collectLinkDecorations(state, visibleRanges, settings));
+}
 
+function collectLinkDecorations(
+	state: EditorState,
+	visibleRanges: readonly TextRange[],
+	settings: CompactLinksSettings
+): DecorationSet {
 	const ranges: Range<Decoration>[] = [];
 	const markdown = settings.compactMarkdownLinks;
 	const seenNodes = new Set<number>();
@@ -64,10 +83,10 @@ export function buildLinkDecorations(
 
 					if (isAlias) {
 						const range = findAliasRange(node);
-						if (range && !hasCursorInRange(state, range)) {
+						if (range) {
 							ranges.push(Decoration.mark(COMPACT_ALIAS_LINK_DECORATION).range(range.from, range.to));
 						}
-					} else if (!hasCursorInRange(state, node) && node.from < node.to) {
+					} else if (node.from < node.to) {
 						const url = state.sliceDoc(node.from, node.to);
 						const parsed = UrlParser.parse(url);
 						if (!parsed.isUrl) return;
@@ -93,8 +112,7 @@ export function buildLinkDecorations(
 			let match: RegExpExecArray | null;
 			while ((match = pattern.exec(text)) !== null) {
 				const range = { from: from + match.index + 2, to: from + match.index + 2 + match[1].length };
-				if (!visibleRanges.some((visible) => range.from < visible.to && range.to > visible.from) ||
-					hasCursorInRange(state, range)) continue;
+				if (!visibleRanges.some((visible) => range.from < visible.to && range.to > visible.from)) continue;
 				const displayText = textTruncator(match[1], markdown.CompactMdLinkAltSettings.displayLength);
 				if (displayText === match[1]) continue;
 				addWidget(ranges, match[1], displayText, COMPACT_MD_LINK_ALT_DECORATION.truncated.className,
@@ -106,8 +124,14 @@ export function buildLinkDecorations(
 	return Decoration.set(ranges, true);
 }
 
-function hasCursorInRange(state: EditorState, range: TextRange): boolean {
-	return state.selection.ranges.some(({ head }) => head >= range.from && head <= range.to);
+function selectionDisablesCompaction(state: EditorState, settings: CompactLinksSettings): boolean {
+	return settings.disableWhenSelected && state.selection.ranges.some((range) => !range.empty);
+}
+
+function filterCursors(state: EditorState, candidates: DecorationSet): DecorationSet {
+	return candidates.update({
+		filter: (from, to) => !state.selection.ranges.some(({ head }) => head >= from && head <= to),
+	});
 }
 
 function findAliasRange(node: SyntaxNodeRef): TextRange | null {
