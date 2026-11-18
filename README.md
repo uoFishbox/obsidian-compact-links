@@ -1,75 +1,63 @@
 # Obsidian Compact Links Plugin
 
-An Obsidian plugin that displays links in a compact format and reduces visual clutter while typing.
+An Obsidian plugin that compacts links and image alt text in the editor to reduce visual clutter, expanding them automatically when you place your cursor on them.
 
-![Title - debug - Obsidian v1.7.4](https://i.gyazo.com/3d1edaabdd6f2f08d72b3df82c1f6bcb.gif)
+![Overview demo of Obsidian Compact Links Plugin](https://i.gyazo.com/3d1edaabdd6f2f08d72b3df82c1f6bcb.gif)
 
 ## Features
 
 ### Compact Aliased Links
 
-When you have a wikilink with an alias in the format `[[NoteTitle|Alias]]`, the plugin compacts it to show only the alias portion `[[|Alias]]`. The full note title becomes visible only when your cursor is positioned within the title section of the link.
+For wikilinks with an alias (`[[NoteTitle|Alias]]`), the plugin hides the note title and displays `[[|Alias]]`. The full note title expands when your cursor is positioned inside the title section.
 
-![Title - debug - Obsidian v1.7.4](https://i.gyazo.com/3b6eaaad0bf2fc7284eb2dacab3bfce7.gif)
+![Demo of compact aliased links](https://i.gyazo.com/3b6eaaad0bf2fc7284eb2dacab3bfce7.gif)
 
 **Example:**
 
--   Normal view: `[[|ShortTitle]]`
--   When cursor is at note title: `[[TooLongNoteTitle|ShortTitle]]`
+- Normal view: `[[|ShortTitle]]`
+- When cursor is in the title section: `[[TooLongNoteTitle|ShortTitle]]`
 
 ### Compact External Links
 
-For markdown-style external links in the format `[Title](url)`, the plugin automatically shortens the URL display. The full URL is displayed when the cursor is at the URL portion or by clicking on the shortened portion.
+For Markdown external links (`[Title](url)`), the plugin shortens the URL display according to the selected mode. The full URL expands when your cursor is on the URL portion or when you click the shortened text.
 
-Domain mode:
+**Domain mode:**
 
-![Title - debug - Obsidian v1.7.4](https://i.gyazo.com/a46a9d77f273ae9e0021080c5c359e64.gif)
+![Demo of external links in domain mode](https://i.gyazo.com/a46a9d77f273ae9e0021080c5c359e64.gif)
 
-Hidden mode:
+**Hidden mode:**
 
-![Title - debug - Obsidian v1.7.4](https://i.gyazo.com/a76ee2401bd5c54205c9565da64ca861.gif)
+![Demo of external links in hidden mode](https://i.gyazo.com/a76ee2401bd5c54205c9565da64ca861.gif)
 
 **Example:**
 
--   Normal view (domain mode): `[GitHub](github.com)`
--   Normal view (hidden mode): `[GitHub](...)`
--   When cursor is at URL: `[GitHub](https://github.com/username/repository)`
+- Normal view (Domain mode): `[GitHub](github.com)`
+- Normal view (Hidden mode): `[GitHub](...)`
+- When cursor is on the URL: `[GitHub](https://github.com/username/repository)`
 
 ### Compact Image Alt Text
 
-Alt text shortening applies only to Markdown image embeds in the form
-`![alt](link)`, such as `![A very long description](image.png)`. The alt text
-is shortened to the configured display length. CJK characters count as two and
-other Unicode code points count as one. Place a cursor in the alt text or click
-its shortened version to edit the full text. Short alt text stays visible.
+For Markdown image embeds (`![alt](link)`), alt text exceeding the configured display length is shortened. CJK characters count as 2 and other Unicode code points count as 1. Alt text within the limit is shown in full. Place the cursor in the alt text or click the shortened version to edit the full text.
+
+> Note: This applies only to Markdown image embeds (`![alt](link)`), not wikilink embeds (`![[image.png|alt]]`).
+
+**Example:**
+
+- Normal view: `![A very long ...](image.png)`
+- When cursor is in the alt text: `![A very long description](image.png)`
+
+## Installation
+
+<!-- TODO: Community Plugins からのインストール手順、または Releases からの手動配置手順を記載 -->
 
 ## Development
 
-Use Node.js 20 with npm 10, as used in CI:
+### Setup
+
+Use Node.js 20 with npm 10 (matching the CI environment):
 
 ```sh
 npm ci
 npm test
 npm run lint
 npm run build
-```
-
-`npm run dev` watches the source and rebuilds the plugin for local development.
-
-The source has three responsibilities:
-
-- `src/main.ts` registers the editor extension and updates it for existing and
-  newly opened editors when settings change.
-- `src/settings.ts` validates persisted settings and supplies independent defaults;
-  `src/settingsTab.ts` renders the settings UI.
-- `src/cmplugins/CompactLinksPlugin.ts` builds all link decorations in one view
-  plugin. It extracts visible candidates after document, viewport, or syntax
-  tree changes. Selection changes only filter those candidates, avoiding URL
-  parsing and syntax tree traversal. Image descriptions come from Obsidian's
-  image tokens. Extraction is deferred while compaction is disabled. Widgets
-  compare their content and positions so CodeMirror can reuse their DOM.
-
-Tests use real CodeMirror states and Lezer trees with Obsidian token names. The
-Obsidian host and DOM are stubbed, so also verify in Obsidian: alias and URL
-expansion at cursor boundaries, image alt text after editing and scrolling,
-tooltip/click behavior, and source/live preview switching in multiple panes.
