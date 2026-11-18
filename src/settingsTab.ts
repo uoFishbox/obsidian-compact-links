@@ -36,7 +36,10 @@ export class CompactLinksSettingTab extends PluginSettingTab {
 					this.toggle("Display full text in tooltip on hover", markdown.enableTooltip, (value) => {
 						markdown.enableTooltip = value;
 					}),
-					this.toggle("Alt text shortening", alt.enable, (value) => { alt.enable = value; }),
+					{
+						...this.toggle("Shorten image alt text", alt.enable, (value) => { alt.enable = value; }),
+						desc: "Applies only to Markdown image embeds in the form ![alt](link).",
+					},
 					{
 						name: "Display length",
 						desc: "Number of characters to display. CJK characters are treated as two characters.",

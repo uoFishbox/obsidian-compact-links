@@ -37,11 +37,11 @@ Hidden mode:
 
 ### Compact Image Alt Text
 
-Long image descriptions such as `![A very long description](image.png)` are
-shortened to the configured display length. CJK characters count as two; other
-Unicode code points count as one. Place a cursor in the description or click its
-shortened text to edit the full description. Short descriptions remain editable
-without a replacement widget.
+Alt text shortening applies only to Markdown image embeds in the form
+`![alt](link)`, such as `![A very long description](image.png)`. The alt text
+is shortened to the configured display length. CJK characters count as two and
+other Unicode code points count as one. Place a cursor in the alt text or click
+its shortened version to edit the full text. Short alt text stays visible.
 
 ## Development
 
