@@ -1,7 +1,7 @@
 {
-	"name": "obsidian-sample-plugin",
+	"name": "obsidian-compact-links",
 	"version": "1.2.0",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"description": "Displays links in a compact format to reduce visual clutter during typing.",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
