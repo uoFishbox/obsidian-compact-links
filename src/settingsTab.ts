@@ -14,7 +14,6 @@ export class CompactLinksSettingTab extends PluginSettingTab {
 		const url = markdown.CompactMdLinkUrlSettings;
 		containerEl.empty();
 
-		containerEl.createEl("h2", { text: "General" });
 		this.addToggle("Disable in source mode", settings.disableInSourceMode, (value) => {
 			settings.disableInSourceMode = value;
 		});
@@ -22,18 +21,17 @@ export class CompactLinksSettingTab extends PluginSettingTab {
 			settings.disableWhenSelected = value;
 		});
 
-		containerEl.createEl("h2", { text: "Compact Aliased Internal Links" });
+		new Setting(containerEl).setName("Compact aliased internal links").setHeading();
 		this.addToggle("Enable", settings.compactAliasedLinks.enable, (value) => {
 			settings.compactAliasedLinks.enable = value;
 		});
 
-		containerEl.createEl("h2", { text: "Compact Markdown Links" });
+		new Setting(containerEl).setName("Compact Markdown links").setHeading();
 		this.addToggle("Display full text in tooltip on hover", markdown.enableTooltip, (value) => {
 			markdown.enableTooltip = value;
 		});
 
-		containerEl.createEl("p", { text: "Alt text shortening" });
-		this.addToggle("Enable", alt.enable, (value) => { alt.enable = value; }, true);
+		this.addToggle("Alt text shortening", alt.enable, (value) => { alt.enable = value; }, true);
 		if (alt.enable) {
 			new Setting(containerEl)
 				.setName("Display length")
@@ -49,8 +47,7 @@ export class CompactLinksSettingTab extends PluginSettingTab {
 					}));
 		}
 
-		containerEl.createEl("p", { text: "URL shortening" });
-		this.addToggle("Enable", url.enable, (value) => { url.enable = value; }, true);
+		this.addToggle("URL shortening", url.enable, (value) => { url.enable = value; }, true);
 		if (url.enable) {
 			new Setting(containerEl)
 				.setName("URL display format")
