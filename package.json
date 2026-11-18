@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-compact-links",
-	"version": "1.2.0",
+	"version": "1.2.1",
 	"description": "Displays links in a compact format to reduce visual clutter during typing.",
 	"main": "main.js",
 	"scripts": {
