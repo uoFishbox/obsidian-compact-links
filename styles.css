@@ -12,7 +12,6 @@
     cursor: pointer;
 }
 
-
-.suppress-alias {
-    display: none !important;
+.cm-editor .cm-content .cm-line .suppress-alias {
+    display: none;
 }
