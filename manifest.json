@@ -5,6 +5,6 @@
 	"id": "compact-links",
 	"isDesktopOnly": false,
 	"name": "Compact Links",
-	"minAppVersion": "1.4.4",
+	"minAppVersion": "1.13.0",
 	"version": "1.2.0"
 }

@@ -1,4 +1,5 @@
-import { App, PluginSettingTab, Setting } from "obsidian";
+import { App, PluginSettingTab } from "obsidian";
+import type { SettingDefinitionItem, SettingDefinitionRender } from "obsidian";
 import type CompactLinksPlugin from "./main";
 
 export class CompactLinksSettingTab extends PluginSettingTab {
@@ -6,78 +7,88 @@ export class CompactLinksSettingTab extends PluginSettingTab {
 		super(app, plugin);
 	}
 
-	display(): void {
-		const { containerEl } = this;
+	getSettingDefinitions(): SettingDefinitionItem[] {
 		const settings = this.plugin.settings;
 		const markdown = settings.compactMarkdownLinks;
 		const alt = markdown.CompactMdLinkAltSettings;
 		const url = markdown.CompactMdLinkUrlSettings;
-		containerEl.empty();
 
-		this.addToggle("Disable in source mode", settings.disableInSourceMode, (value) => {
-			settings.disableInSourceMode = value;
-		});
-		this.addToggle("Disable while text is selected", settings.disableWhenSelected, (value) => {
-			settings.disableWhenSelected = value;
-		});
-
-		new Setting(containerEl).setName("Compact aliased internal links").setHeading();
-		this.addToggle("Enable", settings.compactAliasedLinks.enable, (value) => {
-			settings.compactAliasedLinks.enable = value;
-		});
-
-		new Setting(containerEl).setName("Compact Markdown links").setHeading();
-		this.addToggle("Display full text in tooltip on hover", markdown.enableTooltip, (value) => {
-			markdown.enableTooltip = value;
-		});
-
-		this.addToggle("Alt text shortening", alt.enable, (value) => { alt.enable = value; }, true);
-		if (alt.enable) {
-			new Setting(containerEl)
-				.setName("Display length")
-				.setDesc("Number of characters to display. CJK characters are treated as two characters.")
-				.addText((text) => text
-					.setPlaceholder("20")
-					.setValue(String(alt.displayLength))
-					.onChange(async (value) => {
-						const length = Number(value);
-						if (!Number.isSafeInteger(length) || length < 1) return;
-						alt.displayLength = length;
-						await this.plugin.saveSettings();
-					}));
-		}
-
-		this.addToggle("URL shortening", url.enable, (value) => { url.enable = value; }, true);
-		if (url.enable) {
-			new Setting(containerEl)
-				.setName("URL display format")
-				.setDesc(url.displayMode === "domain"
-					? "Display format: [Title](domain)"
-					: "Display format: [Title](...)")
-				.addDropdown((dropdown) => dropdown
-					.addOptions({ hidden: "Hidden", domain: "Show domain" })
-					.setValue(url.displayMode)
-					.onChange(async (value) => {
-						if (value !== "domain" && value !== "hidden") return;
-						url.displayMode = value;
-						await this.plugin.saveSettings();
-						this.display();
-					}));
-		}
+		return [
+			this.toggle("Disable in source mode", settings.disableInSourceMode, (value) => {
+				settings.disableInSourceMode = value;
+			}),
+			this.toggle("Disable while text is selected", settings.disableWhenSelected, (value) => {
+				settings.disableWhenSelected = value;
+			}),
+			{
+				type: "group",
+				heading: "Compact aliased internal links",
+				items: [
+					this.toggle("Enable", settings.compactAliasedLinks.enable, (value) => {
+						settings.compactAliasedLinks.enable = value;
+					}),
+				],
+			},
+			{
+				type: "group",
+				heading: "Compact Markdown links",
+				items: [
+					this.toggle("Display full text in tooltip on hover", markdown.enableTooltip, (value) => {
+						markdown.enableTooltip = value;
+					}),
+					this.toggle("Alt text shortening", alt.enable, (value) => { alt.enable = value; }),
+					{
+						name: "Display length",
+						desc: "Number of characters to display. CJK characters are treated as two characters.",
+						visible: () => alt.enable,
+						render: (setting) => {
+							setting.addText((text) => text
+								.setPlaceholder("20")
+								.setValue(String(alt.displayLength))
+								.onChange(async (value) => {
+									const length = Number(value);
+									if (!Number.isSafeInteger(length) || length < 1) return;
+									alt.displayLength = length;
+									await this.plugin.saveSettings();
+								}));
+						},
+					},
+					this.toggle("URL shortening", url.enable, (value) => { url.enable = value; }),
+					{
+						name: "URL display format",
+						desc: url.displayMode === "domain"
+							? "Display format: [Title](domain)"
+							: "Display format: [Title](...)",
+						visible: () => url.enable,
+						render: (setting) => {
+							setting.addDropdown((dropdown) => dropdown
+								.addOptions({ hidden: "Hidden", domain: "Show domain" })
+								.setValue(url.displayMode)
+								.onChange(async (value) => {
+									if (value !== "domain" && value !== "hidden") return;
+									url.displayMode = value;
+									await this.plugin.saveSettings();
+									this.update();
+								}));
+						},
+					},
+				],
+			},
+		];
 	}
 
-	private addToggle(
-		name: string,
-		value: boolean,
-		update: (value: boolean) => void,
-		redisplay = false
-	): void {
-		new Setting(this.containerEl).setName(name).addToggle((toggle) => toggle
-			.setValue(value)
-			.onChange(async (enabled) => {
-				update(enabled);
-				await this.plugin.saveSettings();
-				if (redisplay) this.display();
-			}));
+	private toggle(name: string, value: boolean, setValue: (value: boolean) => void): SettingDefinitionRender {
+		return {
+			name,
+			render: (setting) => {
+				setting.addToggle((toggle) => toggle
+					.setValue(value)
+					.onChange(async (enabled) => {
+						setValue(enabled);
+						await this.plugin.saveSettings();
+						this.refreshDomState();
+					}));
+			},
+		};
 	}
 }
