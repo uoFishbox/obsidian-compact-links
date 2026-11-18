@@ -1,9 +1,11 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { EditorState, EditorSelection } = require("@codemirror/state");
+const { EditorState, EditorSelection, StateEffect } = require("@codemirror/state");
 const { Language, defineLanguageFacet } = require("@codemirror/language");
 const { Parser, NodeType, Tree } = require("@lezer/common");
-const { buildLinkDecorations, createCompactLinksExtension, loadSettings, UrlParser } = require("./runtime.cjs");
+const {
+	buildLinkDecorations, createCompactLinksExtension, editorLivePreviewField, setLivePreview, loadSettings, UrlParser,
+} = require("./runtime.cjs");
 
 // Use real Lezer trees with Obsidian's token names; Obsidian's parser is host-provided.
 function stateWithTokens(doc, tokens = [], selection = EditorSelection.cursor(0)) {
@@ -40,6 +42,17 @@ const aliasDoc = " [[Long note|Alias]]";
 const aliasTokens = [
 	["formatting-link-start", 1, 3], ["hmd-internal-link", 3, 12],
 	["link-alias-pipe", 12, 13], ["hmd-internal-link", 13, 18], ["formatting-link-end", 18, 20],
+];
+
+const imageDoc = " ![abcdefgh](image.png)";
+const imageTokens = [
+	["formatting_formatting-image_image_image-marker", 1, 2],
+	["formatting_formatting-image_image_image-alt-text_link", 2, 3],
+	["image_image-alt-text_link", 3, 11],
+	["formatting_formatting-image_image_image-alt-text_link", 11, 12],
+	["formatting_formatting-link-string_string_url", 12, 13],
+	["string_url", 13, 22],
+	["formatting_formatting-link-string_string_url", 22, 23],
 ];
 
 test("alias title is hidden until a cursor enters the title, including its boundaries", () => {
@@ -89,7 +102,7 @@ test("visible ranges do not duplicate decorations for a syntax node crossing the
 });
 
 test("image alt text spans viewport edges and updates after an edit at the same position", () => {
-	let state = stateWithTokens(" ![abcdefgh](image.png)");
+	let state = stateWithTokens(imageDoc, imageTokens);
 	const settings = loadSettings({ compactMarkdownLinks: { CompactMdLinkAltSettings: { displayLength: 3 } } });
 	const visible = [{ from: 5, to: 7 }, { from: 8, to: 10 }];
 	let found = decorations(state, settings, visible);
@@ -99,7 +112,32 @@ test("image alt text spans viewport edges and updates after an edit at the same 
 	state = state.update({ changes: { from: 3, to: 11, insert: "12345678" } }).state;
 	found = decorations(state, settings, visible);
 	assert.equal(found[0].value.spec.widget.displayText, "123...");
-	assert.equal(decorations(stateWithTokens(" ![abc](image.png)"), settings).length, 0);
+	assert.equal(decorations(state).length, 0);
+});
+
+test("only parsed images with destinations receive alt text widgets", () => {
+	const settings = loadSettings({ compactMarkdownLinks: { CompactMdLinkAltSettings: { displayLength: 3 } } });
+	for (const [doc, tokens] of [
+		["`![abcdefgh](image.png)`", [["inline-code", 0, 24]]],
+		["~~~\n![abcdefgh](image.png)\n~~~", [["HyperMD-codeblock", 4, 26]]],
+		[" ![abcdefgh]", [["link", 3, 11]]],
+		[" ![abcdefgh](unfinished", [["image_image-marker", 1, 23]]],
+		[" ![abcdefgh]()", [...imageTokens.slice(0, 5), [imageTokens[6][0], 13, 14]]],
+	]) {
+		assert.equal(decorations(stateWithTokens(doc, tokens), settings).length, 0, doc);
+	}
+
+	const styled = stateWithTokens(" ![abc**d**](image.png)", [
+		...imageTokens.slice(0, 2),
+		["image_image-alt-text_link", 3, 6],
+		["formatting-strong_image_image-alt-text_link", 6, 8],
+		["strong_image_image-alt-text_link", 8, 9],
+		["formatting-strong_image_image-alt-text_link", 9, 11],
+		...imageTokens.slice(3),
+	]);
+	const found = decorations(styled, settings, [{ from: 7, to: 10 }]);
+	assert.deepEqual(found.map(({ from, to }) => [from, to]), [[3, 11]]);
+	assert.equal(found[0].value.spec.widget.displayText, "abc...");
 });
 
 test("feature switches independently suppress their own decorations", () => {
@@ -107,8 +145,24 @@ test("feature switches independently suppress their own decorations", () => {
 	assert.equal(decorations(stateWithTokens(aliasDoc, aliasTokens), settings).length, 0);
 	settings.compactMarkdownLinks.CompactMdLinkUrlSettings.enable = false;
 	assert.equal(decorations(stateWithTokens(" https://example.com", [["string_url", 1, 20]]), settings).length, 0);
+	settings.compactMarkdownLinks.CompactMdLinkAltSettings.displayLength = 3;
 	settings.compactMarkdownLinks.CompactMdLinkAltSettings.enable = false;
-	assert.equal(decorations(stateWithTokens(" ![" + "a".repeat(40) + "](image)"), settings).length, 0);
+	assert.equal(decorations(stateWithTokens(imageDoc, imageTokens), settings).length, 0);
+});
+
+test("source mode changes toggle decorations without a selection or layout change", () => {
+	let state = stateWithTokens(aliasDoc, aliasTokens);
+	state = state.update({ effects: StateEffect.appendConfig.of(editorLivePreviewField) }).state;
+	const view = { state, visibleRanges: [{ from: 0, to: state.doc.length }] };
+	const plugin = createCompactLinksExtension(loadSettings({ disableInSourceMode: true })).create(view);
+	assert.equal(plugin.decorations.size, 1);
+	for (const [live, expected] of [[false, 0], [true, 1]]) {
+		const next = state.update({ effects: setLivePreview.of(live) }).state;
+		view.state = next;
+		plugin.update({ state: next, startState: state, view });
+		assert.equal(plugin.decorations.size, expected);
+		state = next;
+	}
 });
 
 test("view updates rebuild after scrolling and background syntax parsing", () => {
@@ -164,8 +218,8 @@ test("cached alias candidates respect secondary cursors and inclusive title boun
 });
 
 test("alt candidates spanning viewport edges are reused without rescanning long lines", (t) => {
-	const doc = " ![abcdefgh](image.png)" + "x".repeat(100000);
-	let state = stateWithTokens(doc);
+	const doc = imageDoc + "x".repeat(100000);
+	let state = stateWithTokens(doc, imageTokens);
 	const settings = loadSettings({ compactMarkdownLinks: { CompactMdLinkAltSettings: { displayLength: 3 } } });
 	const slices = t.mock.method(EditorState.prototype, "sliceDoc");
 	const view = { state, visibleRanges: [{ from: 5, to: 7 }, { from: 8, to: 10 }] };
@@ -184,7 +238,7 @@ test("alt candidates spanning viewport edges are reused without rescanning long 
 });
 
 test("edits invalidate cached alt text and defer extraction while a secondary selection disables compaction", (t) => {
-	let state = stateWithTokens(" ![abcdefgh](image.png)");
+	let state = stateWithTokens(imageDoc, imageTokens);
 	const settings = loadSettings({ disableWhenSelected: true,
 		compactMarkdownLinks: { CompactMdLinkAltSettings: { displayLength: 3 } } });
 	const slices = t.mock.method(EditorState.prototype, "sliceDoc");
@@ -214,7 +268,7 @@ test("edits invalidate cached alt text and defer extraction while a secondary se
 });
 
 test("an initially disabled view waits until the selection clears to extract candidates", (t) => {
-	const state = stateWithTokens(" ![abcdefgh](image.png)", [], EditorSelection.range(4, 6));
+	const state = stateWithTokens(imageDoc, imageTokens, EditorSelection.range(4, 6));
 	const settings = loadSettings({ disableWhenSelected: true,
 		compactMarkdownLinks: { CompactMdLinkAltSettings: { displayLength: 3 } } });
 	const slices = t.mock.method(EditorState.prototype, "sliceDoc");

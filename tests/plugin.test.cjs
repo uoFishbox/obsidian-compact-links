@@ -1,49 +1,56 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { EditorState } = require("@codemirror/state");
-const { Plugin, MarkdownView, loadSettings } = require("./runtime.cjs");
+const { EditorState, StateEffect } = require("@codemirror/state");
+const { Plugin, editorLivePreviewField, setLivePreview } = require("./runtime.cjs");
 
-test("loading, source mode changes, and settings updates configure every editor without redundant dispatch", async () => {
-	const callbacks = {};
-	const views = [];
-	let ready;
+test("saving settings updates the extension for open and newly created editors", async () => {
+	const editors = [];
+	let updates = 0;
 	const app = { workspace: {
-		on(name, callback) { callbacks[name] = callback; },
-		onLayoutReady(callback) { ready = callback; },
-		getLeavesOfType() { return views.map((view) => ({ view })); },
+		updateOptions() {
+			updates++;
+			for (const editor of editors) {
+				editor.refresh(plugin.registeredExtension);
+			}
+		},
 	} };
 	const plugin = new Plugin(app);
 	plugin.data = { disableInSourceMode: true };
 	await plugin.onload();
-	function editor(source) {
-		const cm = {
-			state: EditorState.create({ extensions: [plugin.registeredExtension] }),
-			dispatches: 0,
-			dispatch(transaction) {
-				this.dispatches++;
-				this.state = this.state.update(transaction).state;
+	const registered = plugin.registeredExtension;
+	const startupExtension = registered[0];
+
+	function openSourceEditor() {
+		const editor = {
+			state: EditorState.create({ extensions: [editorLivePreviewField, registered] }),
+			refresh(extensions) {
+				this.state = this.state.update({
+					effects: StateEffect.reconfigure.of([editorLivePreviewField, extensions]),
+				}).state;
+				this.viewPlugin = extensions[0].create(this);
 			},
+			get visibleRanges() {
+				this.extractions++;
+				return [];
+			},
+			extractions: 0,
 		};
-		const view = new MarkdownView(cm, source);
-		views.push(view);
-		return view;
+		editor.state = editor.state.update({ effects: setLivePreview.of(false) }).state;
+		editor.refresh(registered);
+		editors.push(editor);
+		return editor;
 	}
-	const source = editor(true);
-	const live = editor(false);
-	const cm = source.editor.cm;
-	ready();
-	assert.deepEqual(plugin.extensionCompartment.get(cm.state), []);
-	assert.equal(cm.dispatches, 1);
-	assert.equal(live.editor.cm.dispatches, 0);
-	callbacks["layout-change"]();
-	assert.equal(cm.dispatches, 1);
-	source.source = false;
-	callbacks["layout-change"]();
-	assert.equal(plugin.extensionCompartment.get(cm.state), plugin.extensionCompartment.get(live.editor.cm.state));
-	plugin.settings = loadSettings({ disableWhenSelected: true });
+
+	const existing = openSourceEditor();
+	assert.equal(existing.extractions, 0);
+
+	plugin.settings.disableInSourceMode = false;
 	await plugin.saveSettings();
-	assert.equal(plugin.savedData.disableWhenSelected, true);
-	assert.equal(plugin.extensionCompartment.get(cm.state), plugin.extensionCompartment.get(live.editor.cm.state));
-	assert.equal(cm.dispatches, 3);
-	assert.equal(live.editor.cm.dispatches, 1);
+
+	assert.equal(plugin.savedData.disableInSourceMode, false);
+	assert.equal(plugin.registeredExtension, registered);
+	assert.notEqual(registered[0], startupExtension);
+	assert.equal(updates, 1);
+	assert.equal(existing.extractions, 1);
+	assert.equal(openSourceEditor().extractions, 1);
 });

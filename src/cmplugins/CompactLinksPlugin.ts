@@ -2,6 +2,7 @@ import { syntaxTree } from "@codemirror/language";
 import { EditorState, Range } from "@codemirror/state";
 import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate } from "@codemirror/view";
 import { SyntaxNodeRef } from "@lezer/common";
+import { editorLivePreviewField } from "obsidian";
 import { CompactMdLinkWidget } from "../components/CompactMdLinkWidget";
 import {
 	COMPACT_ALIAS_LINK_DECORATION,
@@ -30,14 +31,16 @@ class CompactLinksView {
 		if (update.docChanged || update.viewportChanged ||
 			syntaxTree(update.startState) !== syntaxTree(update.state)) {
 			this.candidates = null;
-		} else if (!update.selectionSet) {
+		} else if (!update.selectionSet &&
+			sourceModeDisablesCompaction(update.startState, this.settings) ===
+			sourceModeDisablesCompaction(update.state, this.settings)) {
 			return;
 		}
 		this.refresh(update.view);
 	}
 
 	private refresh(view: EditorView): void {
-		if (selectionDisablesCompaction(view.state, this.settings)) {
+		if (compactionDisabled(view.state, this.settings)) {
 			this.decorations = Decoration.none;
 			return;
 		}
@@ -52,7 +55,7 @@ export function buildLinkDecorations(
 	visibleRanges: readonly TextRange[],
 	settings: CompactLinksSettings
 ): DecorationSet {
-	if (selectionDisablesCompaction(state, settings)) {
+	if (compactionDisabled(state, settings)) {
 		return Decoration.none;
 	}
 	return filterCursors(state, collectLinkDecorations(state, visibleRanges, settings));
@@ -65,16 +68,30 @@ function collectLinkDecorations(
 ): DecorationSet {
 	const ranges: Range<Decoration>[] = [];
 	const markdown = settings.compactMarkdownLinks;
+	const alt = markdown.CompactMdLinkAltSettings;
 	const seenNodes = new Set<number>();
 	const tree = syntaxTree(state);
+	let imageAltEnd = -1;
 
-	if (settings.compactAliasedLinks.enable || markdown.CompactMdLinkUrlSettings.enable) {
+	if (settings.compactAliasedLinks.enable || markdown.CompactMdLinkUrlSettings.enable || alt.enable) {
 		for (const { from, to } of visibleRanges) {
 			tree.iterate({
 				from,
 				to,
 				enter: (node) => {
 					const name = node.type.name;
+					if (alt.enable && node.from >= imageAltEnd && name.includes("image-alt-text")) {
+						const range = findImageAltRange(node);
+						if (range && range.from < to && range.to > from) {
+							imageAltEnd = range.to + 1;
+							const fullText = state.sliceDoc(range.from, range.to);
+							const displayText = textTruncator(fullText, alt.displayLength);
+							if (displayText !== fullText) {
+								addWidget(ranges, fullText, displayText, COMPACT_MD_LINK_ALT_DECORATION.truncated.className,
+									range, markdown.enableTooltip);
+							}
+						}
+					}
 					const isAlias = settings.compactAliasedLinks.enable && name.includes("formatting-link-start");
 					const isUrl = markdown.CompactMdLinkUrlSettings.enable &&
 						(name.includes("string_url") || name.includes("string_strong_url"));
@@ -104,28 +121,16 @@ function collectLinkDecorations(
 		}
 	}
 
-	if (markdown.CompactMdLinkAltSettings.enable) {
-		// Scan complete lines so scrolling cannot truncate a match at a viewport edge.
-		for (const { from, to } of visibleLineRanges(state, visibleRanges)) {
-			const pattern = /!\[([^[\]\r\n]+)\]/g;
-			const text = state.sliceDoc(from, to);
-			let match: RegExpExecArray | null;
-			while ((match = pattern.exec(text)) !== null) {
-				const range = { from: from + match.index + 2, to: from + match.index + 2 + match[1].length };
-				if (!visibleRanges.some((visible) => range.from < visible.to && range.to > visible.from)) continue;
-				const displayText = textTruncator(match[1], markdown.CompactMdLinkAltSettings.displayLength);
-				if (displayText === match[1]) continue;
-				addWidget(ranges, match[1], displayText, COMPACT_MD_LINK_ALT_DECORATION.truncated.className,
-					range, markdown.enableTooltip);
-			}
-		}
-	}
-
 	return Decoration.set(ranges, true);
 }
 
-function selectionDisablesCompaction(state: EditorState, settings: CompactLinksSettings): boolean {
-	return settings.disableWhenSelected && state.selection.ranges.some((range) => !range.empty);
+function sourceModeDisablesCompaction(state: EditorState, settings: CompactLinksSettings): boolean {
+	return settings.disableInSourceMode && state.field(editorLivePreviewField, false) === false;
+}
+
+function compactionDisabled(state: EditorState, settings: CompactLinksSettings): boolean {
+	return sourceModeDisablesCompaction(state, settings) ||
+		(settings.disableWhenSelected && state.selection.ranges.some((range) => !range.empty));
 }
 
 function filterCursors(state: EditorState, candidates: DecorationSet): DecorationSet {
@@ -145,16 +150,24 @@ function findAliasRange(node: SyntaxNodeRef): TextRange | null {
 	return null;
 }
 
-function visibleLineRanges(state: EditorState, visibleRanges: readonly TextRange[]): TextRange[] {
-	const lines: TextRange[] = [];
-	for (const range of visibleRanges) {
-		const from = state.doc.lineAt(range.from).from;
-		const to = state.doc.lineAt(range.to).to;
-		const previous = lines[lines.length - 1];
-		if (previous && from <= previous.to) previous.to = Math.max(previous.to, to);
-		else lines.push({ from, to });
+function findImageAltRange(node: SyntaxNodeRef): TextRange | null {
+	// Obsidian includes both brackets in the alt text tokens and can split the
+	// description across multiple siblings, including across viewport boundaries.
+	let first = node.node;
+	let last = first;
+	for (let previous = first.prevSibling; previous?.name.includes("image-alt-text"); previous = first.prevSibling) {
+		first = previous;
 	}
-	return lines;
+	for (let next = last.nextSibling; next?.name.includes("image-alt-text"); next = last.nextSibling) {
+		last = next;
+	}
+	if (!first.prevSibling?.name.includes("image-marker") ||
+		!last.name.includes("formatting-image") || first.from + 1 >= last.to - 1) return null;
+
+	const destination = last.nextSibling?.nextSibling;
+	if (!destination?.name.split("_").includes("url") ||
+		destination.name.includes("formatting-link-string")) return null;
+	return { from: first.from + 1, to: last.to - 1 };
 }
 
 function addWidget(
